@@ -71,7 +71,8 @@ class GitObject a where
 instance GitObject Blob where
   objectName _ = "blob"
   objectBody = blobData
-  objectParser size = Blob . SBS.fromStrictByteString . LBS.toStrict
+  objectParser size = Blob
+    . SBS.fromLazyByteStringOfKnownLength (fromIntegral size)
     <$> takeLazyByteString
 
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
