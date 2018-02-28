@@ -16,18 +16,12 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Proxy (Proxy(..))
-import Data.Word
-import System.Posix (getFileStatus, fileSize)
-import System.Directory
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
 import Git.Types (Blob(..))
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
-
-storeObject :: GitObject a => FilePath -> a -> IO ()
-storeObject storePath obj = do undefined
 
 space :: Parser ()
 space = void $ word8 32
