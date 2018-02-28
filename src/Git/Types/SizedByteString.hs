@@ -1,5 +1,6 @@
 module Git.Types.SizedByteString
-  (SizedByteString, fromStrictByteString, fromHandle, length, toLazyByteString)
+  ( SizedByteString, fromStrictByteString, fromHandle, length
+  , toLazyByteString, fromLazyByteStringOfKnownLength)
 where
 
 import Prelude hiding (length)
@@ -21,6 +22,11 @@ instance Monoid SizedByteString where
 fromStrictByteString :: BS.ByteString -> SizedByteString
 fromStrictByteString bs = SizedByteString
   (fromIntegral $ BS.length bs) (LBS.fromStrict bs)
+
+-- | This is an "escape hatch" where you can promise that you really do know how
+--   long the LazyByteString is, and this SizedByteString will just track it.
+fromLazyByteStringOfKnownLength :: Integer -> LBS.ByteString -> SizedByteString
+fromLazyByteStringOfKnownLength = SizedByteString
 
 -- | If the file handle is closed, reading from the ByteString will fail, just
 --   like a regular LazyByteString.
