@@ -17,8 +17,9 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Proxy (Proxy(..))
-import Data.Text.Encoding (decodeUtf8)
-import Data.Time (minutesToTimeZone)
+import qualified Data.Text as Text
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Time (minutesToTimeZone, timeZoneMinutes)
 import Text.Printf (printf)
 
 import Git.Types (Blob(..), Commit(..))
@@ -57,7 +58,25 @@ instance GitObject Blob where
 
 instance GitObject Commit where
   objectName _ = "commit"
-  objectBody = undefined
+  objectBody c = metadata <> commitMsg c
+    where
+      metadata = SBS.fromStrictByteString $ Builder.toByteString $
+           sha1RowB "tree" (commitTreeHash c)
+        <> mconcat (sha1RowB "parent" <$> commitParents c)
+        <> contributorRowB "author" (commitAuthor c)
+             (commitAuthorEmail c) (commitAuthoredAt c)
+             (commitAuthoredTz c)
+        <> contributorRowB "committer" (commitCommitter c)
+             (commitCommitterEmail c) (commitCommittedAt c)
+             (commitCommittedTz c)
+      sha1StringB = b . Char8.pack . Sha1.toHexString
+      sha1RowB role sha1 = b role <> b " " <> sha1StringB sha1 <> b "\n"
+      contributorRowB r n e t tz = b r <> b " " <> b (encodeUtf8 n) <> b "<"
+        <> b (encodeUtf8 e) <> b ">" <> iB t <> tzB tz
+      iB :: Show a => a -> Builder
+      iB = b . encodeUtf8 . Text.pack . show
+      tzB tz = let m = timeZoneMinutes tz in
+        (if m < 0 then b "-" else b "+") <> iB m
   objectParser size = do
       treeSha1 <- treeRowP
       parentSha1s <- many' parentRowP
@@ -105,3 +124,5 @@ takeTill' p = takeTill p <* anyWord8
 char' :: Char -> Parser ()
 char' = void . char
 
+b :: BS.ByteString -> Builder
+b = Builder.fromByteString
