@@ -35,24 +35,14 @@ class GitObject a where
         <> (Char8.pack $ show $ SBS.length $ objectBody obj)
         <> (BS.singleton 0)
 
-  decodeObject :: MonadFail m => SizedByteString -> m a
-  decodeObject sbs =
-      lazyParseOnly ((parseHeader >>= parseBody) <* endOfInput) $
-      SBS.toLazyByteString sbs
+  decodeObject :: MonadFail m => LBS.ByteString -> m a
+  decodeObject = lazyParseOnly ((parseHeader >>= objectParser) <* endOfInput)
     where
       parseHeader :: Parser Integer
       parseHeader = do
         _ <- (string $ objectName $ Proxy @a) <?> "object name"
         _ <- char ' '
         decimal <* char '\NUL' <?> "object size"
-      parseBody :: Integer -> Parser a
-      parseBody recordedSize = do
-        headerSize <- tellParsePos
-        let actualSize = SBS.length sbs - fromIntegral headerSize
-        unless (recordedSize == actualSize) $ fail $ printf
-          "Incorrect header size: expected %d bytes, actual file was %d bytes"
-          recordedSize actualSize
-        objectParser actualSize
 
   objectName :: proxy a -> BS.ByteString
   objectBody :: a -> SizedByteString
@@ -61,7 +51,8 @@ class GitObject a where
 instance GitObject Blob where
   objectName _ = "blob"
   objectBody = blobData
-  objectParser = fmap Blob . takeRemaining
+  objectParser size =
+    Blob . SBS.takeFromLazyByteString size <$> takeLazyByteString
 
 
 instance GitObject Commit where
@@ -73,7 +64,7 @@ instance GitObject Commit where
       (authName, authEmail, authAt, authTz) <- contributorRowP "author"
       (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
       _ <- char '\n'
-      msg <- takeRemaining size
+      msg <- SBS.takeFromLazyByteString size <$> takeLazyByteString
       return $ Commit
         treeSha1
         parentSha1s
@@ -107,12 +98,6 @@ lazyParseOnly p bs = case parse p bs of
 tellParsePos :: Parser Int
 tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
   success t pos more (ApIntern.fromPos pos)
-
-takeRemaining :: Integer -> Parser SizedByteString
-takeRemaining totalSize = do
-  initPos <- tellParsePos
-  SBS.fromLazyByteStringOfKnownLength (totalSize - fromIntegral initPos) <$>
-    takeLazyByteString
 
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8

@@ -1,13 +1,11 @@
 module Git.Store where
 
 import Codec.Compression.Zlib (compress, decompress)
-import Control.Monad.Fail (MonadFail)
 import qualified Data.ByteString.Lazy as LBS
 import System.Directory (renameFile, createDirectoryIfMissing)
 import System.FilePath.Posix ((</>))
 import System.IO
-  (openTempFile, withBinaryFile, hSeek, SeekMode(..), hClose, IOMode(..))
-import System.IO.Temp (withTempFile)
+  (openTempFile, openBinaryFile, hSeek, SeekMode(..), hClose, IOMode(..))
 
 import Git.Serialise (GitObject(..))
 import Git.Types.Sha1 (Sha1, hashLazy, toHexString)
@@ -29,13 +27,8 @@ storeObject storePath obj = do
 
 -- We only let you get access to the retrieved objects in a context, because we
 -- have to have a hook for cleaning up the temporary uncompressed files.
-withRetrievedObject
-  :: (MonadFail m, GitObject a) => FilePath -> Sha1 -> (m a -> IO r) -> IO r
-withRetrievedObject storePath sha1 f =
+retrieveObject :: GitObject a => FilePath -> Sha1 -> IO a
+retrieveObject storePath sha1 =
   let (sha1Head, filename) = splitAt 2 $ toHexString sha1 in
-  withBinaryFile (storePath </> sha1Head </> filename) ReadMode $
-    \objHandle -> withTempFile storePath "compressed_encoded_object" $
-      \_ tmpHandle -> do
-        LBS.hGetContents objHandle >>= LBS.hPut tmpHandle . decompress
-        hSeek tmpHandle AbsoluteSeek 0
-        SBS.fromHandle tmpHandle >>= f . decodeObject
+  openBinaryFile (storePath </> sha1Head </> filename) ReadMode
+  >>= LBS.hGetContents >>= decodeObject . decompress
