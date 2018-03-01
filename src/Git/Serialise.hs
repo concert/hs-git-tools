@@ -1,14 +1,15 @@
 module Git.Serialise where
 
-import Prelude hiding (fail)
+import Prelude hiding (fail, take)
 
 import Control.Monad (void, unless)
 import Control.Monad.Fail (MonadFail(..))
 import Blaze.ByteString.Builder (Builder)
 import qualified Blaze.ByteString.Builder as Builder
+import Data.Attoparsec.ByteString.Char8 (char, decimal, signed, takeTill)
 import Data.Attoparsec.ByteString.Lazy
-  ( Parser, Result(..), parse, string, word8, endOfInput, takeTill
-  , takeLazyByteString)
+  ( Parser, Result(..), parse, string, endOfInput
+  , takeLazyByteString, many', take, anyWord8, (<?>))
 import qualified Data.Attoparsec.Internal.Types as ApIntern
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
@@ -16,24 +17,14 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Proxy (Proxy(..))
+import Data.Text.Encoding (decodeUtf8)
+import Data.Time (NominalDiffTime, minutesToTimeZone, picosecondsToDiffTime)
 import Text.Printf (printf)
-import Text.Read (readMaybe)
 
-import Git.Types (Blob(..))
+import Git.Types (Blob(..), Commit(..))
+import qualified Git.Types.Sha1 as Sha1
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
-
-space :: Parser ()
-space = void $ word8 32
-
-nullByte :: Parser ()
-nullByte = void $ word8 0
-
-asciiToInt :: MonadFail m => BS.ByteString -> m Int
-asciiToInt "" = fail "asciiToInt: Empty ByteString"
-asciiToInt bs = maybe (fail "asciiToint: parse error") return $ readMaybe
-  $ Char8.unpack bs
-
 
 class GitObject a where
   encodeObject :: a -> SizedByteString
@@ -49,31 +40,63 @@ class GitObject a where
       lazyParseOnly ((parseHeader >>= parseBody) <* endOfInput) $
       SBS.toLazyByteString sbs
     where
-      parseHeader :: Parser (Int, Int)
+      parseHeader :: Parser Integer
       parseHeader = do
-        void $ string $ objectName $ Proxy @a
-        recordedSize <- takeTill (== 0) >>= asciiToInt
-        nullByte
+        _ <- (string $ objectName $ Proxy @a) <?> "object name"
+        _ <- char ' '
+        decimal <* char '\NUL' <?> "object size"
+      parseBody :: Integer -> Parser a
+      parseBody recordedSize = do
         headerSize <- tellParsePos
-        return (headerSize, recordedSize)
-      parseBody :: (Int, Int) -> Parser a
-      parseBody (headerSize, recordedSize) =
-        let actualSize = SBS.length sbs - headerSize in do
-          unless (recordedSize == actualSize) $ fail $ printf
-            "Incorrect header size: expected %d bytes, actual file was %d bytes"
-            recordedSize actualSize
-          objectParser actualSize
+        let actualSize = SBS.length sbs - fromIntegral headerSize
+        unless (recordedSize == actualSize) $ fail $ printf
+          "Incorrect header size: expected %d bytes, actual file was %d bytes"
+          recordedSize actualSize
+        objectParser actualSize
 
   objectName :: proxy a -> BS.ByteString
   objectBody :: a -> SizedByteString
-  objectParser :: Int -> Parser a
+  objectParser :: Integer -> Parser a
 
 instance GitObject Blob where
   objectName _ = "blob"
   objectBody = blobData
-  objectParser size = Blob
-    . SBS.fromLazyByteStringOfKnownLength (fromIntegral size)
-    <$> takeLazyByteString
+  objectParser = fmap Blob . takeRemaining
+
+
+instance GitObject Commit where
+  objectName _ = "commit"
+  objectBody = undefined
+  objectParser size = do
+      treeSha1 <- treeRowP
+      parentSha1s <- many' parentRowP
+      (authName, authEmail, authAt, authTz) <- contributorRowP "author"
+      (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
+      _ <- char '\n'
+      msg <- takeRemaining size
+      return $ Commit
+        treeSha1
+        parentSha1s
+        authName authEmail authAt authTz
+        commName commEmail commAt commTz
+        msg
+    where
+      sha1StringP = take 40 >>= Sha1.fromHexString . Char8.unpack
+      sha1RowP role = string role >> char ' ' >> sha1StringP <* char '\n'
+      treeRowP = sha1RowP "tree"
+      parentRowP = sha1RowP "parent"
+      emailP = char '<' >> takeTill' (== '>')
+      contributorRowP role = do
+        _ <- string role
+        _ <- char ' '
+        name <- decodeUtf8 . BS.init <$> takeTill (== '<')
+        email <- decodeUtf8 <$> emailP
+        _ <- char ' '
+        posixTime <- secondsToNominalDiffTime <$> decimal
+        _ <- char ' '
+        tz <- minutesToTimeZone <$> signed decimal
+        _ <- char '\n'
+        return (name, email, posixTime, tz)
 
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
 lazyParseOnly p bs = case parse p bs of
@@ -84,3 +107,19 @@ lazyParseOnly p bs = case parse p bs of
 tellParsePos :: Parser Int
 tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
   success t pos more (ApIntern.fromPos pos)
+
+takeRemaining :: Integer -> Parser SizedByteString
+takeRemaining totalSize = do
+  initPos <- tellParsePos
+  SBS.fromLazyByteStringOfKnownLength (totalSize - fromIntegral initPos) <$>
+    takeLazyByteString
+
+takeTill' :: (Char -> Bool) -> Parser BS.ByteString
+takeTill' p = takeTill p <* anyWord8
+
+char' :: Char -> Parser ()
+char' = void . char
+
+secondsToNominalDiffTime :: Int -> NominalDiffTime
+secondsToNominalDiffTime =
+    (* 1e12) . fromRational . toRational . picosecondsToDiffTime . toInteger

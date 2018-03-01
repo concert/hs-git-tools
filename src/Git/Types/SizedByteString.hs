@@ -33,8 +33,8 @@ fromLazyByteStringOfKnownLength = SizedByteString
 fromHandle :: Handle -> IO SizedByteString
 fromHandle h = SizedByteString <$> getFileSize h <*> LBS.hGetContents h
 
-length :: SizedByteString -> Int
-length = fromIntegral . sbsLength
+length :: SizedByteString -> Integer
+length = sbsLength
 
 toLazyByteString :: SizedByteString -> LBS.ByteString
 toLazyByteString = sbsBytes

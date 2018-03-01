@@ -1,4 +1,8 @@
-module Git.Types.Sha1 (Sha1, unSha1, hashLazy, toHexString, fromHexString) where
+module Git.Types.Sha1
+  ( Sha1, unSha1, fromByteString
+  , toHexString, fromHexString
+  , hashLazy
+  ) where
 
 import Prelude hiding (fail)
 
@@ -14,14 +18,16 @@ newtype Sha1 = Sha1 {unSha1 :: BS.ByteString}
 instance Show Sha1 where
   show sha1 = "sha1: " ++ toHexString sha1
 
+fromByteString :: MonadFail m => BS.ByteString -> m Sha1
+fromByteString bs | BS.length bs == 20 = return $ Sha1 bs
+                  | otherwise = fail "sha1: fromByteString: bad digest length"
+
 toHexString :: Sha1 -> String
 toHexString = Char8.unpack . Base16.encode . unSha1
 
 fromHexString :: MonadFail m => String -> m Sha1
 fromHexString s = case Base16.decode $ Char8.pack s of
-  (bs, "") -> if (BS.length bs == 20)
-    then return $ Sha1 bs
-    else fail "sha1: fromHexString: bad digest length"
+  (bs, "") -> fromByteString bs
   _ -> fail $ "sha1: fromHexString: decodeError"
 
 
