@@ -2,7 +2,7 @@ module Git.Serialise where
 
 import Prelude hiding (fail, take)
 
-import Control.Monad (void, unless)
+import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Blaze.ByteString.Builder (Builder)
 import qualified Blaze.ByteString.Builder as Builder
