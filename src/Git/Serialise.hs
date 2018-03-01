@@ -18,7 +18,7 @@ import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Proxy (Proxy(..))
 import Data.Text.Encoding (decodeUtf8)
-import Data.Time (NominalDiffTime, minutesToTimeZone, picosecondsToDiffTime)
+import Data.Time (minutesToTimeZone)
 import Text.Printf (printf)
 
 import Git.Types (Blob(..), Commit(..))
@@ -83,7 +83,7 @@ instance GitObject Commit where
         name <- decodeUtf8 . BS.init <$> takeTill (== '<')
         email <- decodeUtf8 <$> emailP
         _ <- char ' '
-        posixTime <- secondsToNominalDiffTime <$> decimal
+        posixTime <- fromIntegral @Integer <$> decimal
         _ <- char ' '
         tz <- minutesToTimeZone <$> signed decimal
         _ <- char '\n'
@@ -105,6 +105,3 @@ takeTill' p = takeTill p <* anyWord8
 char' :: Char -> Parser ()
 char' = void . char
 
-secondsToNominalDiffTime :: Int -> NominalDiffTime
-secondsToNominalDiffTime =
-    (* 1e12) . fromRational . toRational . picosecondsToDiffTime . toInteger
