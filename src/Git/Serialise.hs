@@ -42,7 +42,7 @@ class GitObject a where
       parseHeader :: Parser Integer
       parseHeader = do
         _ <- (string $ objectName $ Proxy @a) <?> "object name"
-        _ <- char ' '
+        char_ ' '
         decimal <* char '\NUL' <?> "object size"
 
   objectName :: proxy a -> BS.ByteString
@@ -82,7 +82,7 @@ instance GitObject Commit where
       parentSha1s <- many' parentRowP
       (authName, authEmail, authAt, authTz) <- contributorRowP "author"
       (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
-      _ <- char '\n'
+      char_ '\n'
       msg <- SBS.takeFromLazyByteString size <$> takeLazyByteString
       return $ Commit
         treeSha1
@@ -98,14 +98,14 @@ instance GitObject Commit where
       emailP = char '<' >> takeTill' (== '>')
       contributorRowP role = do
         _ <- string role
-        _ <- char ' '
+        char_ ' '
         name <- decodeUtf8 . BS.init <$> takeTill (== '<')
         email <- decodeUtf8 <$> emailP
-        _ <- char ' '
+        char_ ' '
         posixTime <- fromIntegral @Integer <$> decimal
-        _ <- char ' '
+        char_ ' '
         tz <- minutesToTimeZone <$> signed decimal
-        _ <- char '\n'
+        char_ '\n'
         return (name, email, posixTime, tz)
 
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
@@ -121,8 +121,8 @@ tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
-char' :: Char -> Parser ()
-char' = void . char
+char_ :: Char -> Parser ()
+char_ = void . char
 
 b :: BS.ByteString -> Builder
 b = Builder.fromByteString
