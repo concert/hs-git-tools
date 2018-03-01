@@ -19,10 +19,11 @@ import Data.List (intercalate)
 import Data.Proxy (Proxy(..))
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Time (minutesToTimeZone, timeZoneMinutes)
-import Text.Printf (printf)
+import Data.Time
+  (minutesToTimeZone, timeZoneMinutes, ZonedTime(..), zonedTimeToUTC)
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
-import Git.Types (Blob(..), Commit(..))
+import Git.Types (Blob(..), Commit(..), toZonedTime)
 import qualified Git.Types.Sha1 as Sha1
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
@@ -65,18 +66,17 @@ instance GitObject Commit where
         <> mconcat (sha1RowB "parent" <$> commitParents c)
         <> contributorRowB "author" (commitAuthor c)
              (commitAuthorEmail c) (commitAuthoredAt c)
-             (commitAuthoredTz c)
         <> contributorRowB "committer" (commitCommitter c)
              (commitCommitterEmail c) (commitCommittedAt c)
-             (commitCommittedTz c)
       sha1StringB = b . Char8.pack . Sha1.toHexString
       sha1RowB role sha1 = b role <> b " " <> sha1StringB sha1 <> b "\n"
-      contributorRowB r n e t tz = b r <> b " " <> b (encodeUtf8 n) <> b "<"
-        <> b (encodeUtf8 e) <> b ">" <> iB t <> tzB tz
+      contributorRowB r n e t = b r <> b " " <> b (encodeUtf8 n) <> b "<"
+        <> b (encodeUtf8 e) <> b ">" <> tB t
       iB :: Show a => a -> Builder
       iB = b . encodeUtf8 . Text.pack . show
-      tzB tz = let m = timeZoneMinutes tz in
-        (if m < 0 then b "-" else b "+") <> iB m
+      tB t = let m = timeZoneMinutes $ zonedTimeZone t in
+           iB (utcTimeToPOSIXSeconds $ zonedTimeToUTC t)
+        <> (if m < 0 then b "-" else b "+") <> iB m
   objectParser size = do
       treeSha1 <- treeRowP
       parentSha1s <- many' parentRowP
@@ -87,8 +87,8 @@ instance GitObject Commit where
       return $ Commit
         treeSha1
         parentSha1s
-        authName authEmail authAt authTz
-        commName commEmail commAt commTz
+        authName authEmail (toZonedTime authAt authTz)
+        commName commEmail (toZonedTime commAt commTz)
         msg
     where
       sha1StringP = take 40 >>= Sha1.fromHexString . Char8.unpack

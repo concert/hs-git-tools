@@ -2,7 +2,7 @@ module Git.Types.Objects where
 
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Time (TimeZone, LocalTime, utcToLocalTime)
+import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Text.Printf (printf)
 
@@ -22,12 +22,10 @@ data Commit = Commit
   , commitParents :: [Sha1]
   , commitAuthor :: Text
   , commitAuthorEmail :: Text
-  , commitAuthoredAt :: POSIXTime
-  , commitAuthoredTz :: TimeZone
+  , commitAuthoredAt :: ZonedTime
   , commitCommitter :: Text
   , commitCommitterEmail :: Text
-  , commitCommittedAt :: POSIXTime
-  , commitCommittedTz :: TimeZone
+  , commitCommittedAt :: ZonedTime
   , commitMsg :: SizedByteString
   }
 
@@ -35,10 +33,10 @@ instance Show Commit where
   show c = printf "<commit: %s <%s> %s>"
     (Text.unpack $ commitAuthor c)
     (Text.unpack $ commitAuthorEmail c)
-    (show $ toLocalTime (commitAuthoredAt c) (commitAuthoredTz c))
+    (show $ commitAuthoredAt c)
 
-toLocalTime :: POSIXTime -> TimeZone -> LocalTime
-toLocalTime pt tz = utcToLocalTime tz $ posixSecondsToUTCTime pt
+toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
+toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
 
 data Tag = Tag
 
