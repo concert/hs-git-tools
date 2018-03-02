@@ -4,6 +4,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
+import System.Posix (FileMode)
 import Text.Printf (printf)
 
 import Git.Types.Sha1 (Sha1)
@@ -15,7 +16,13 @@ data Blob = Blob {blobData :: SizedByteString}
 instance Show Blob where
   show = printf "<blob: %d>" . SBS.length . blobData
 
-data Tree = Tree
+newtype Tree = Tree {unTree :: [TreeRow]} deriving (Show, Eq)
+
+data TreeRow = TreeRow
+  { treeRowMode :: FileMode
+  , treeRowName :: Text
+  , treeRowSha1 :: Sha1
+  } deriving (Show, Eq)
 
 data Commit = Commit
   { commitTreeHash :: Sha1
@@ -40,8 +47,12 @@ toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
 
 data Tag = Tag
 
+data ObjectType =
+  ObjTyBlob | ObjTyTree | ObjTyCommit | ObjTyTag
+  deriving (Show, Eq, Enum, Bounded)
+
 data Object
-  = ObjectBlob Blob
-  | ObjectTree Tree
-  | ObjectCommit Commit
-  | ObjectTag Tag
+  = ObjBlob Blob
+  | ObjTree Tree
+  | ObjCommit Commit
+  | ObjTag Tag

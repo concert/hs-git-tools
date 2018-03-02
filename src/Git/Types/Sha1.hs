@@ -13,7 +13,7 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 
-newtype Sha1 = Sha1 {unSha1 :: BS.ByteString}
+newtype Sha1 = Sha1 {unSha1 :: BS.ByteString} deriving (Eq)
 
 instance Show Sha1 where
   show sha1 = "sha1: " ++ toHexString sha1
