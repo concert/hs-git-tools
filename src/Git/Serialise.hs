@@ -36,6 +36,7 @@ class GitObject a where
     where
       header = SBS.fromStrictByteString $
            (objectName $ Proxy @a)
+        <> " "
         <> (Char8.pack $ show $ SBS.length $ objectBody obj)
         <> (BS.singleton 0)
 
