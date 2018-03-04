@@ -177,7 +177,7 @@ getPackIndexRecordNo sha1 = do
           liftIO $ hSeek h AbsoluteSeek
             $ packIndexDataStart Version2
             + fromIntegral sha1Size * fromIntegral minRecordNo
-          recordNo <- liftIO $ LBS.hGetContents h >>= findSha1Idx totalRecords 0
+          recordNo <- liftIO $ LBS.hGetContents h >>= findSha1Idx totalRecords minRecordNo
           put $ pis {pisRecordNos = Map.insert sha1 recordNo $ pisRecordNos pis}
           return recordNo
   where
