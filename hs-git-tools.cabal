@@ -46,6 +46,7 @@ library
   exposed-modules:
       Git
     , Git.Pack
+    , Git.Pack.Index
     , Git.Serialise
     , Git.Store
     , Git.Types
