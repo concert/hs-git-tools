@@ -27,12 +27,15 @@ library
       base >=4.7 && <5
     , async
     , attoparsec
+    , attoparsec-binary
     , base16-bytestring
     , blaze-builder
     , bytestring
+    , containers
     , cryptohash
     , directory
     , filepath
+    , mtl
     , temporary
     , text
     , tagged
@@ -42,6 +45,7 @@ library
     , zlib
   exposed-modules:
       Git
+    , Git.Pack
     , Git.Serialise
     , Git.Store
     , Git.Types
