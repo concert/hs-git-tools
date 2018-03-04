@@ -35,6 +35,7 @@ library
     , filepath
     , temporary
     , text
+    , tagged
     , time
     , unix
     , utf8-string
