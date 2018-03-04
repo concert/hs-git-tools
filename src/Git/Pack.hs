@@ -89,6 +89,37 @@ getPackIndexVersion h = do
       else fail "Unsupported pack index version"
     _ -> return Version1
 
+getPackIndexSha1
+  :: (MonadIO m, MonadFail m, MonadState PackIndexState m) => m Sha1
+getPackIndexSha1 = do
+    pis <- get
+    case pisSha1 pis of
+      Just sha1 -> return sha1
+      Nothing -> do
+        sha1 <- readSha1 $ pisHandle pis
+        put $ pis {pisSha1 = Just sha1}
+        return sha1
+  where
+    readSha1 h = liftIO $
+      hSeek h SeekFromEnd (-fromIntegral sha1Size)
+      >> BS.hGet h (fromIntegral sha1Size)
+      >>= Sha1.fromByteString
+
+getPackSha1 :: (MonadIO m, MonadFail m, MonadState PackIndexState m) => m Sha1
+getPackSha1 = do
+    pis <- get
+    case pisPackFileSha1 pis of
+      Just sha1 -> return sha1
+      Nothing -> do
+        sha1 <- readPackFileSha1 $ pisHandle pis
+        put $ pis {pisPackFileSha1 = Just sha1}
+        return sha1
+  where
+    readPackFileSha1 h = liftIO $
+      hSeek h SeekFromEnd (2 * (-fromIntegral sha1Size))
+      >> BS.hGet h (fromIntegral sha1Size)
+      >>= Sha1.fromByteString
+
 bsToWord32 :: MonadFail m => BS.ByteString -> m Word32
 bsToWord32 = either fail return . parseOnly anyWord32be
 
