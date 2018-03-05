@@ -105,8 +105,9 @@ getPackIndexSha1 = do
       >> BS.hGet h (fromIntegral sha1Size)
       >>= Sha1.fromByteString
 
-getPackSha1 :: (MonadIO m, MonadFail m, MonadState PackIndexState m) => m Sha1
-getPackSha1 = do
+getPackSha1FromIndex
+  :: (MonadIO m, MonadFail m, MonadState PackIndexState m) => m Sha1
+getPackSha1FromIndex = do
     pis <- get
     case pisPackFileSha1 pis of
       Just sha1 -> return sha1
