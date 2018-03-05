@@ -30,7 +30,7 @@ takeFromLazyByteString size =
 -- | If the file handle is closed, reading from the ByteString will fail, just
 --   like a regular LazyByteString.
 fromHandle :: Handle -> IO SizedByteString
-fromHandle h = SizedByteString <$> getFileSize h <*> LBS.hGetContents h
+fromHandle h = SizedByteString <$> getRemainingFileSize h <*> LBS.hGetContents h
 
 length :: SizedByteString -> Integer
 length = sbsLength
@@ -38,8 +38,8 @@ length = sbsLength
 toLazyByteString :: SizedByteString -> LBS.ByteString
 toLazyByteString = sbsBytes
 
-getFileSize :: Handle -> IO Integer
-getFileSize h = do
+getRemainingFileSize :: Handle -> IO Integer
+getRemainingFileSize h = do
   initialPos <- hTell h
   sizeBytes <- hSeek h SeekFromEnd 0 >> hTell h
   hSeek h AbsoluteSeek initialPos
