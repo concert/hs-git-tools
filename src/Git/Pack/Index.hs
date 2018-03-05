@@ -84,7 +84,7 @@ getPackIndexVersion h = do
   liftIO $ hSeek h AbsoluteSeek 0
   (magic, rest) <- BS.splitAt 4 <$> liftIO (BS.hGet h 8)
   case magic of
-    "\255tOc" -> if parseOnly anyWord32be rest == Right 2
+    "\255tOc" -> if bsToWord32 rest == Just 2
       then return Version2
       else fail "Unsupported pack index version"
     _ -> return Version1
