@@ -23,7 +23,6 @@ import Text.Printf (printf)
 import Git.Types (Version(..), Sha1(..), sha1Size)
 import qualified Git.Types.Sha1 as Sha1
 
-import Debug.Trace
 
 data PackIndexState
   = PackIndexStateV1
@@ -171,9 +170,7 @@ getPackIndexRecordNo sha1 = do
       Version1 -> fail "getPackIndexRecordNo: unsupported version"
       Version2 -> let h = pisHandle pis in do
           minRecordNo <- getPackIndexMinRecordNo sha1
-          traceShow minRecordNo $ return ()
           totalRecords <- getPackIndexTotalRecords
-          traceShow totalRecords $ return ()
           liftIO $ hSeek h AbsoluteSeek
             $ packIndexDataStart Version2
             + fromIntegral sha1Size * fromIntegral minRecordNo
@@ -184,12 +181,11 @@ getPackIndexRecordNo sha1 = do
     findSha1Idx :: MonadFail m => Word32 -> Word32 -> LBS.ByteString -> m Word32
     findSha1Idx totRecs i lbs = let (first, rest) = LBS.splitAt 20 lbs in do
       sha1' <- Sha1.fromByteString $ LBS.toStrict $ first
-      trace "iter" $ traceShow sha1' $ return ()
       case compare sha1' sha1 of
         LT -> if i + 1 >= totRecs
           then fail "getPackIndexRecordNoV2: sha1 not found" -- End of table
           else findSha1Idx totRecs (i + 1) rest
-        EQ -> trace "boom" $ return i
+        EQ -> return i
         GT -> fail "getPackIndexRecordNoV2: sha1 not found"
 
 getPackRecordCrc
