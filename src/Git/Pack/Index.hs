@@ -20,9 +20,10 @@ import System.IO
   (openBinaryFile, Handle, IOMode(..), hSeek, SeekMode(..), hClose)
 import Text.Printf (printf)
 
-import Git.Types (Version(..), Sha1(..), sha1Size)
+import Git.Types (Sha1(..), sha1Size)
 import qualified Git.Types.Sha1 as Sha1
 
+data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
 data PackIndexState
   = PackIndexStateV1
