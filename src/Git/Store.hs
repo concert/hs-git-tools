@@ -25,8 +25,6 @@ storeObject storePath obj = let encoded = encodeObject obj in do
   renameFile tmpPath $ dirPath </> filename
   return $ Tagged sha1
 
--- We only let you get access to the retrieved objects in a context, because we
--- have to have a hook for cleaning up the temporary uncompressed files.
 retrieveObject :: GitObject a => FilePath -> Tagged a Sha1 -> IO a
 retrieveObject storePath sha1 =
   let (sha1Head, filename) = splitAt 2 $ toHexString $ unTagged sha1 in
