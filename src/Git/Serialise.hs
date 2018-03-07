@@ -11,6 +11,7 @@ import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.ByteString.Lazy
   ( Parser, Result(..), parse, string, endOfInput
   , takeLazyByteString, many', many1, take, anyWord8, (<?>))
+import qualified Data.Attoparsec.Internal.Types as ApIntern
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
@@ -133,6 +134,10 @@ lazyParseOnly p bs = case parse p bs of
     Fail _ [] err -> fail err
     Fail _ ctxs err -> fail $ intercalate " > " ctxs ++ ": " ++ err
     Done _ r -> return r
+
+tellParsePos :: Parser Int
+tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
+  success t pos more (ApIntern.fromPos pos)
 
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8

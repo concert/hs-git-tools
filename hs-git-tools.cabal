@@ -89,6 +89,7 @@ test-suite hs-git-test
     , knob
     , hspec
   other-modules:
+      Git.SerialiseSpec
       Git.Types.SizedByteStringSpec
       Paths_hs_git_tools
   default-language: Haskell2010
