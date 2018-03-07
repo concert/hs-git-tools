@@ -213,6 +213,8 @@ getPackIndexRecordNo sha1 = do
           put $ pis {pisRecordNos = Map.insert sha1 recordNo $ pisRecordNos pis}
           return recordNo
   where
+    -- FIXME: this could be faster if implemented as a binary search, since the
+    -- entries are ordered:
     findSha1Idx
       :: MonadError GitError m => Word32 -> Word32 -> LBS.ByteString -> m Word32
     findSha1Idx totRecs i lbs = let (first, rest) = LBS.splitAt 20 lbs in do
