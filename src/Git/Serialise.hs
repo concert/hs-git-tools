@@ -104,7 +104,9 @@ instance GitObject Commit where
       (authName, authEmail, authAt, authTz) <- contributorRowP "author"
       (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
       char_ '\n'
-      msg <- SBS.takeFromLazyByteString size <$> takeLazyByteString
+      pos <- tellParsePos
+      msg <- SBS.takeFromLazyByteString (size - fromIntegral  pos) <$>
+        takeLazyByteString
       return $ Commit
         treeSha1
         parentSha1s
