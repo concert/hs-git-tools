@@ -36,11 +36,12 @@ library
     , containers
     , cryptohash
     , directory
+    , either
     , filepath
     , mtl
+    , tagged
     , temporary
     , text
-    , tagged
     , time
     , unix
     , utf8-string
@@ -53,6 +54,7 @@ library
     , Git.Serialise
     , Git.Store
     , Git.Types
+    , Git.Types.Internal
     , Git.Types.Objects
     , Git.Types.Sha1
     , Git.Types.SizedByteString
