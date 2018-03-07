@@ -81,10 +81,10 @@ instance Show PackIndexState where
 
 withPackIndex
   :: MonadIO m
-  => FilePath -> IOMode -> StateT PackIndexState (ExceptT GitError m) r
+  => FilePath -> StateT PackIndexState (ExceptT GitError m) r
   -> m (Either GitError r)
-withPackIndex path mode m = runExceptT $ do
-  h <- excTIO $ openBinaryFile path mode
+withPackIndex path m = runExceptT $ do
+  h <- excTIO $ openBinaryFile path ReadMode
   v <- getPackIndexVersion h
   res <- evalStateT m (packIndexState v h)
   -- FIXME: this might be better bracketed in case of error, although the RTS

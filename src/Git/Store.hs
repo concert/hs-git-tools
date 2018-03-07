@@ -58,12 +58,12 @@ retrieveObject storePath sha1 = do
         packName <- replaceSuffix "idx" "pack" indexName
         -- FIXME: this currently leaks too many details of how to look at pack
         -- files...
-        ph <- openPackFile (storePath </> "pack" </> packName) ReadMode
+        ph <- openPackFile (storePath </> "pack" </> packName)
         (ty, offset, size) <- getPackObjectInfo ph packOffset
         -- FIXME: this DOES NOT CHECK THE OBJECT TYPE!
         getObjectDataFromPack ph offset size >>=
           lazyParseOnly (objectParser size <* endOfInput) . SBS.toLazyByteString
     searchPackIndex :: (MonadIO m, MonadError String m) => FilePath -> m Word64
     searchPackIndex path =
-      withPackIndex path ReadMode (getPackRecordOffset $ unTagged sha1) >>=
+      withPackIndex path (getPackRecordOffset $ unTagged sha1) >>=
       either (throwError . show) return

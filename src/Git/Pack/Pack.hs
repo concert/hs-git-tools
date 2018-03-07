@@ -34,9 +34,9 @@ data PackHandle = PackHandle
   , phNumObjects :: Word32
   } deriving (Show)
 
-openPackFile :: (MonadIO m, MonadFail m) => FilePath -> IOMode -> m PackHandle
-openPackFile path mode = do
-    h <- liftIO $ openBinaryFile path mode
+openPackFile :: (MonadIO m, MonadFail m) => FilePath -> m PackHandle
+openPackFile path = do
+    h <- liftIO $ openBinaryFile path ReadMode
     (version, numObjects) <- (liftIO $ BS.hGet h 12) >>=
       either fail return . parseOnly headerP
     unless (version == 2) $ fail "openPackFile: unsupported version"
