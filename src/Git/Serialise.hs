@@ -26,7 +26,8 @@ import Data.Time
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import System.Posix (CMode(..))
 
-import Git.Types (Blob(..), Tree(..), TreeRow(..), Commit(..), toZonedTime)
+import Git.Types
+  (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime)
 import qualified Git.Types.Sha1 as Sha1
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
@@ -59,6 +60,8 @@ instance GitObject Blob where
   objectParser size =
     Blob . SBS.takeFromLazyByteString size <$> takeLazyByteString
 
+sha1ByteStringP :: Parser Sha1
+sha1ByteStringP = take 20 >>= Sha1.fromByteString
 
 instance GitObject Tree where
   objectName _ = "tree"
@@ -74,7 +77,6 @@ instance GitObject Tree where
     where
       fileModeP = CMode . fromIntegral <$> oct
       nameP = decodeUtf8 <$> takeTill' (== '\NUL')
-      sha1ByteStringP = take 20 >>= Sha1.fromByteString
       rowP = TreeRow <$> (fileModeP <* char ' ') <*> nameP <*> sha1ByteStringP
 
 
