@@ -133,6 +133,11 @@ instance GitObject Commit where
         char_ '\n'
         return (name, email, posixTime, tz)
 
+instance GitObject Tag where
+  objectName _ = "tag"
+  objectBody = undefined
+  objectParser = undefined
+
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
 lazyParseOnly p bs = case parse p bs of
     Fail _ [] err -> fail err
