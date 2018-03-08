@@ -9,22 +9,18 @@ import Control.Monad.Except (ExceptT(..), runExceptT, throwError)
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.State.Class (MonadState(..))
 import Control.Exception (try)
-import Data.Attoparsec.ByteString (Parser, parseOnly)
-import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
 import Data.Bits ((.&.))
 import qualified Data.ByteString as BS
-import Data.ByteString.Internal (fromForeignPtr)
-import Data.Either.Combinators (mapLeft)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Word
-import Foreign.ForeignPtr
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
-import Git.Types.Internal (liftEither)
+import Git.Types.Internal
+  ( MmapHandle, MmapFrom(..), MmapTo(..), mmapData
+  , mmapWord32be, mmapWord64be, mmapSha1)
 import Git.Types (Sha1(..), sha1Size)
-import qualified Git.Types.Sha1 as Sha1
 
 data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
@@ -43,8 +39,6 @@ instance Show GitError where
     UnsupportedOperation s -> "Unsupported operation: " ++ s
     Sha1NotInIndex -> "sha1 not in index"
 
-type MmapHandle = (ForeignPtr Word8, Int, Int)
-
 data PackIndexState
   = PackIndexStateV1
     { pisMmap :: MmapHandle
@@ -61,24 +55,6 @@ data PackIndexState
     , pisV2RecordOffsets :: Map Sha1 Word64
     , pisPackFileSha1 :: Maybe Sha1
     , pisSha1 :: Maybe Sha1}
-
-idxData :: MmapHandle -> Int -> Int -> BS.ByteString
-idxData (ptr, _, _) = fromForeignPtr ptr
-
-idxDataFromEnd :: MmapHandle -> Int -> Int -> BS.ByteString
-idxDataFromEnd (ptr, _, size) ofs len = fromForeignPtr ptr (size - ofs) len
-
-idxDataToEnd :: MmapHandle -> Int -> BS.ByteString
-idxDataToEnd (ptr, _, size) ofs = fromForeignPtr ptr ofs (size - ofs)
-
-idxWord32be :: MmapHandle -> Int -> Word32
-idxWord32be h ofs = either (error . show) id $ bsToWord32 $ idxData h ofs 4
-
-idxWord64be :: MmapHandle -> Int -> Word64
-idxWord64be h ofs = either (error . show) id $ bsToWord64 $ idxData h ofs 8
-
-idxSha1 :: MmapHandle -> Int -> Sha1
-idxSha1 h ofs = either error id $ Sha1.fromByteString $ idxData h ofs 20
 
 packIndexState :: Version -> MmapHandle -> PackIndexState
 packIndexState v h = case v of
@@ -118,9 +94,9 @@ packIndexDataStart v = packIndexHeaderSize v + 256 * 4
 
 getPackIndexVersion
   :: MonadError GitError m => MmapHandle -> m Version
-getPackIndexVersion h = let magic = idxData h 0 4 in do
+getPackIndexVersion h = let magic = mmapData h (FromStart 0) (Length 4) in do
   case magic of
-    "\255tOc" -> let version = idxWord32be h 4 in
+    "\255tOc" -> let version = mmapWord32be h (FromStart 4) in
       if version == 2
         then return Version2
         else throwError UnsupportedPackIndexVersion
@@ -132,13 +108,9 @@ getPackIndexSha1 = do
     pis <- get
     case pisSha1 pis of
       Just sha1 -> return sha1
-      Nothing -> do
-        sha1 <- readSha1 $ pisMmap pis
+      Nothing -> let sha1 = mmapSha1 (pisMmap pis) (FromEnd sha1Size) in do
         put $ pis {pisSha1 = Just sha1}
         return sha1
-  where
-    readSha1 h = bsToSha1 $
-      idxDataFromEnd h (-fromIntegral sha1Size) (fromIntegral sha1Size)
 
 getPackSha1FromIndex
   :: (MonadState PackIndexState m, MonadError GitError m) => m Sha1
@@ -146,28 +118,13 @@ getPackSha1FromIndex = do
     pis <- get
     case pisPackFileSha1 pis of
       Just sha1 -> return sha1
-      Nothing -> do
-        sha1 <- readPackFileSha1 $ pisMmap pis
-        put $ pis {pisPackFileSha1 = Just sha1}
-        return sha1
-  where
-    readPackFileSha1 h = bsToSha1 $
-      idxDataFromEnd h (2 * (-fromIntegral sha1Size)) (fromIntegral sha1Size)
+      Nothing ->
+        let sha1 = mmapSha1 (pisMmap pis) (FromEnd $ 2 * sha1Size) in do
+          put $ pis {pisPackFileSha1 = Just sha1}
+          return sha1
 
 excTIO :: (MonadIO m, MonadError GitError m) => IO a -> m a
 excTIO io = liftIO (try io) >>= either (throwError . ErrorWithIO) return
-
-parseOnly' :: MonadError GitError m => Parser a -> BS.ByteString -> m a
-parseOnly' p = either (throwError . ParseError) return . parseOnly p
-
-bsToWord32 :: MonadError GitError m => BS.ByteString -> m Word32
-bsToWord32 = parseOnly' anyWord32be
-
-bsToWord64 :: MonadError GitError m => BS.ByteString -> m Word64
-bsToWord64 = parseOnly' anyWord64be
-
-bsToSha1 :: MonadError GitError m => BS.ByteString -> m Sha1
-bsToSha1 = liftEither . mapLeft ParseError . Sha1.fromByteString
 
 getFanoutTableEntry
   :: (MonadState PackIndexState m)
@@ -178,9 +135,9 @@ getFanoutTableEntry fotIdx = do
     case Map.lookup fotIdx fot of
       Just fotEntry -> return fotEntry
       Nothing ->
-        let fotEntry = idxWord32be (pisMmap pis)
-              ( packIndexHeaderSize (pisVersion pis)
-              + 4 * (fromIntegral fotIdx))
+        let fotEntry = mmapWord32be (pisMmap pis) $ FromStart $
+              packIndexHeaderSize (pisVersion pis)
+              + 4 * (fromIntegral fotIdx)
         in do
           put $ pis {pisFanOutTable = Map.insert fotIdx fotEntry fot}
           return fotEntry
@@ -213,7 +170,7 @@ getPackIndexRecordNo sha1 = do
           put $ pis {pisRecordNos = Map.insert sha1 recordNo $ pisRecordNos pis}
           return recordNo
   where
-    getSha1 h i = idxSha1 h $
+    getSha1 h i = mmapSha1 h $ FromStart $
       packIndexDataStart Version2 + sha1Size * fromIntegral i
     findSha1Idx
       :: MonadError GitError m
@@ -238,10 +195,10 @@ getPackRecordCrc sha1 = do
       Nothing -> do
         totRecs <- getPackIndexTotalRecords
         recordNo <- getPackIndexRecordNo sha1
-        crc <- bsToWord32 $ idxData (pisMmap pis)
-          ( packIndexDataStart Version2
-          + sha1Size * fromIntegral totRecs
-          + 4 * fromIntegral recordNo) 4
+        let crc = mmapWord32be (pisMmap pis) $ FromStart $
+              packIndexDataStart Version2
+              + sha1Size * fromIntegral totRecs
+              + 4 * fromIntegral recordNo
         put $ pis {pisRecordCrcs = Map.insert sha1 crc $ pisRecordCrcs pis}
         return crc
 
@@ -258,28 +215,26 @@ getPackRecordOffset sha1 =
         Nothing -> do
           totRecs <- getPackIndexTotalRecords
           recordNo <- getPackIndexRecordNo sha1
-          offset <- readOffset (pisMmap pis) totRecs recordNo
+          let offset = readOffset (pisMmap pis) totRecs recordNo
           put $ pis
             { pisV2RecordOffsets = Map.insert sha1 offset $
               pisV2RecordOffsets pis }
           return offset
   where
-    readOffset h totRecs recordNo = do
-      offset4Byte <- bsToWord32 $ idxData h
-        ( packIndexDataStart Version2
-        + sha1Size * fromIntegral totRecs
-        + 4 * (fromIntegral totRecs + fromIntegral recordNo))
-        4
-      if offset4Byte .&. 2 ^ (31 :: Int) == 0
+    readOffset h totRecs recordNo =
+      let offset4Byte = mmapWord32be h $ FromStart $
+            packIndexDataStart Version2
+            + sha1Size * fromIntegral totRecs
+            + 4 * (fromIntegral totRecs + fromIntegral recordNo)
+      in if offset4Byte .&. 2 ^ (31 :: Int) == 0
         -- MSB not set: just return first 31 bits as Word64 offset
-        then return $ fromIntegral offset4Byte
+        then fromIntegral offset4Byte
         -- MSB is set: go read the large object table
         else let largeOffsetIdx = offset4Byte .&. (2 ^ (31 :: Int) - 1) in
-            bsToWord64 $ idxData h
-              ( packIndexDataStart Version2
+            mmapWord64be h $ FromStart $
+              packIndexDataStart Version2
               + sha1Size * fromIntegral totRecs
-              + 8 * (fromIntegral totRecs + fromIntegral largeOffsetIdx))
-              8
+              + 8 * (fromIntegral totRecs + fromIntegral largeOffsetIdx)
 
 
 {- Packfile index structure:
