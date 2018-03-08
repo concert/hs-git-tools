@@ -94,8 +94,7 @@ packIndexDataStart v = packIndexHeaderSize v + 256 * 4
 
 getPackIndexVersion
   :: MonadError GitError m => MmapHandle -> m Version
-getPackIndexVersion h = let magic = mmapData h (FromStart 0) (Length 4) in do
-  case magic of
+getPackIndexVersion h = case mmapData h (FromStart 0) (Length 4) of
     "\255tOc" -> let version = mmapWord32be h (FromStart 4) in
       if version == 2
         then return Version2
