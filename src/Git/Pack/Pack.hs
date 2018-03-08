@@ -77,7 +77,7 @@ getPackObjectInfo ph offset = either fail return $ parseOnly objHeadP $
       ty <- decodePackObjectType $ shift (byte1 .&. 0b01110000) (-4)
       let lenHead = fromIntegral $ byte1 .&. 0b00001111
       if msb == 0
-        then return (ty, offset + 4,lenHead)
+        then return (ty, offset + 4, lenHead)
         else do
           (o, l) <- lengthChunkP lenHead 4
           return $ (ty, offset + fromIntegral o, l)
