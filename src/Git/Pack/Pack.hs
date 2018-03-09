@@ -8,18 +8,17 @@ import Codec.Compression.Zlib (decompress)
 import Control.Monad (unless)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Attoparsec.ByteString
-  (parseOnly, parseWith, eitherResult, string, (<?>), anyWord8)
+import Data.Attoparsec.ByteString (Parser, parseOnly, string, (<?>), anyWord8)
 import Data.Attoparsec.Binary (anyWord32be)
 import Data.Bits ((.&.), (.|.), shift)
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Word
-import System.IO
-  (Handle, IOMode(..), openBinaryFile, hSeek, SeekMode(..), hTell)
+import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 
+import Git.Serialise (tellParsePos)
 import Git.Types (Sha1, sha1Size)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Types.Internal
+  (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
 
@@ -30,15 +29,15 @@ data PackObjectType
   | PotOfsDelta | PotRefDelta deriving (Show, Eq)
 
 data PackHandle = PackHandle
-  { phHandle :: Handle
+  { phMmap :: MmapHandle
   , phNumObjects :: Word32
   } deriving (Show)
 
-openPackFile :: (MonadIO m, MonadFail m) => FilePath -> IOMode -> m PackHandle
-openPackFile path mode = do
-    h <- liftIO $ openBinaryFile path mode
-    (version, numObjects) <- (liftIO $ BS.hGet h 12) >>=
-      either fail return . parseOnly headerP
+openPackFile :: (MonadIO m, MonadFail m) => FilePath -> m PackHandle
+openPackFile path = do
+    h <- liftIO $ mmapFileForeignPtr path ReadOnly Nothing
+    (version, numObjects) <- either fail return $ parseOnly headerP $
+        mmapData h (FromStart 0) (Length 12)
     unless (version == 2) $ fail "openPackFile: unsupported version"
     return $ PackHandle h numObjects
   where
@@ -48,14 +47,11 @@ openPackFile path mode = do
       numObjects <- anyWord32be
       return (version, numObjects)
 
-getPackSha1FromPack :: (MonadIO m, MonadFail m) => PackHandle -> m Sha1
-getPackSha1FromPack ph = let h = phHandle ph in do
-    liftIO $ hSeek h SeekFromEnd (-fromIntegral sha1Size)
-      >> BS.hGet h (fromIntegral sha1Size)
-      >>= Sha1.fromByteString
+getPackSha1FromPack :: PackHandle -> Sha1
+getPackSha1FromPack ph = mmapSha1 (phMmap ph) $ FromEnd (-sha1Size)
 
-decodePackObjecType :: MonadFail m => Word8 -> m PackObjectType
-decodePackObjecType w = case w of
+decodePackObjectType :: MonadFail m => Word8 -> m PackObjectType
+decodePackObjectType w = case w of
   1 -> return PotCommit
   2 -> return PotTree
   3 -> return PotBlob
@@ -64,42 +60,41 @@ decodePackObjecType w = case w of
   7 -> return PotRefDelta
   _ -> traceShow w $ fail "Unrecognised object type"
 
+-- | Gets the type of packed object, the start offset of the actual data blob
+--   (i.e. the position in the file after we've read the object header) and the
+--   size of the _uncompressed_ data for the blob.
 getPackObjectInfo
-  :: (MonadIO m, MonadFail m) => PackHandle -> Word64
-  -> m (PackObjectType, Integer, Integer)
-getPackObjectInfo ph offset =
-  let
-    h = phHandle ph
-    getByte = liftIO $ BS.hGet h 1
-  in do
-    liftIO $ hSeek h AbsoluteSeek $ fromIntegral offset
-    -- FIXME: don't think reading from the file a byte at a time is the smartest
-    -- move, but perhaps the kernel or RTS does something clever?
-    (ty, size) <- getByte >>= parseWith getByte objHeadP >>=
-         either fail return . eitherResult
-    dataStart <- liftIO $ hTell h
-    return (ty, dataStart, size)
+  :: MonadFail m => PackHandle -> Word64 -> m (PackObjectType, Word64, Word64)
+getPackObjectInfo ph offset = either fail return $ parseOnly objHeadP $
+    -- It's ok to make a long bytestring from the mmapped file, because it won't
+    -- actually be read by the kernel until we need it, and we'll stop parsing
+    -- after the header is done:
+    mmapData (phMmap ph) (FromStart $ fromIntegral offset) ToEnd
   where
     objHeadP = do
       byte1 <- anyWord8
       let msb = byte1 .&. 0b10000000
-      ty <- decodePackObjecType $ shift (byte1 .&. 0b01110000) (-4)
+      ty <- decodePackObjectType $ shift (byte1 .&. 0b01110000) (-4)
       let lenHead = fromIntegral $ byte1 .&. 0b00001111
       if msb == 0
-        then return (ty, lenHead)
-        else lengthChunkP lenHead 4 >>= return . (ty,)
+        then return (ty, offset + 4, lenHead)
+        else do
+          (o, l) <- lengthChunkP lenHead 4
+          return $ (ty, offset + fromIntegral o, l)
+    lengthChunkP :: Word64 -> Int -> Parser (Int, Word64)
     lengthChunkP lenHead i = do
       byte <- anyWord8
       let msb = byte .&. 0b10000000
       let lenHead' = lenHead .|. shift (fromIntegral $ byte .&. 0b01111111) i
+      pos <- tellParsePos
       if msb == 0
-        then return lenHead'
+        then return (pos, lenHead')
         else lengthChunkP lenHead' $ i + 7
 
 -- | Uses LBS.hGetContents, so requires that PackHandle is no longer used for
 --   anything else.
-getObjectDataFromPack
-  :: MonadIO m => PackHandle -> Integer -> Integer -> m SizedByteString
-getObjectDataFromPack ph offset len = let h = phHandle ph in do
-  liftIO $ hSeek h AbsoluteSeek offset
-  SBS.takeFromLazyByteString len . decompress <$> liftIO (LBS.hGetContents h)
+getPackObjectData :: PackHandle -> Word64 -> Word64 -> SizedByteString
+getPackObjectData ph offset len =
+  SBS.takeFromLazyByteString (fromIntegral len) $ decompress $
+  LBS.fromStrict $ mmapData (phMmap ph)
+  (FromStart $ fromIntegral offset) (Length $ fromIntegral len)

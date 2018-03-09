@@ -23,7 +23,7 @@ import Git.Types.Sha1 (Sha1, hashLazy, toHexString)
 import qualified Git.Types.SizedByteString as SBS
 import Git.Pack
   ( withPackIndex, getPackRecordOffset, openPackFile, getPackObjectInfo
-  , getObjectDataFromPack)
+  , getPackObjectData)
 
 storeObject :: GitObject a => FilePath -> a -> IO (Tagged a Sha1)
 storeObject storePath obj = let encoded = encodeObject obj in do
@@ -58,12 +58,13 @@ retrieveObject storePath sha1 = do
         packName <- replaceSuffix "idx" "pack" indexName
         -- FIXME: this currently leaks too many details of how to look at pack
         -- files...
-        ph <- openPackFile (storePath </> "pack" </> packName) ReadMode
+        ph <- openPackFile (storePath </> "pack" </> packName)
         (ty, offset, size) <- getPackObjectInfo ph packOffset
         -- FIXME: this DOES NOT CHECK THE OBJECT TYPE!
-        getObjectDataFromPack ph offset size >>=
-          lazyParseOnly (objectParser size <* endOfInput) . SBS.toLazyByteString
+        lazyParseOnly (objectParser (fromIntegral size) <* endOfInput)
+          . SBS.toLazyByteString
+          $ getPackObjectData ph offset size
     searchPackIndex :: (MonadIO m, MonadError String m) => FilePath -> m Word64
     searchPackIndex path =
-      withPackIndex path ReadMode (getPackRecordOffset $ unTagged sha1) >>=
+      withPackIndex path (getPackRecordOffset $ unTagged sha1) >>=
       either (throwError . show) return

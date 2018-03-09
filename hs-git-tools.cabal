@@ -38,6 +38,7 @@ library
     , directory
     , either
     , filepath
+    , mmap
     , mtl
     , tagged
     , temporary
