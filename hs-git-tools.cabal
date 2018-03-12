@@ -50,6 +50,7 @@ library
   exposed-modules:
       Git
     , Git.Pack
+    , Git.Pack.Delta
     , Git.Pack.Index
     , Git.Pack.Pack
     , Git.Serialise
@@ -89,9 +90,11 @@ test-suite hs-git-test
     , attoparsec
     , bytestring
     , knob
+    , mtl
     , hspec
   other-modules:
       Git.SerialiseSpec
+      Git.Pack.DeltaSpec
       Git.Types.SizedByteStringSpec
       Paths_hs_git_tools
   default-language: Haskell2010
