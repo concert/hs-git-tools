@@ -1,9 +1,10 @@
 module Git.Types.SizedByteString
   ( SizedByteString, fromStrictByteString, fromHandle, length
-  , toLazyByteString, takeFromLazyByteString)
+  , toLazyByteString, takeFromLazyByteString, take, drop)
 where
 
-import Prelude hiding (length)
+import Prelude hiding (length, take, drop)
+import Data.Int
 import Data.Monoid ((<>))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -14,7 +15,8 @@ import System.IO (Handle, hSeek, SeekMode(..), hTell)
 data SizedByteString
   = SizedByteString
   { sbsLength :: Word64
-  , sbsBytes :: LBS.ByteString}
+  , sbsBytes :: LBS.ByteString
+  } deriving (Show, Eq)
 
 instance IsString SizedByteString where
   fromString = fromStrictByteString . fromString
@@ -51,3 +53,11 @@ getRemainingFileSize h = do
   sizeBytes <- hSeek h SeekFromEnd 0 >> hTell h
   hSeek h AbsoluteSeek initialPos
   return sizeBytes
+
+take :: Int64 -> SizedByteString -> SizedByteString
+take i (SizedByteString l lbs) =
+  SizedByteString (fromIntegral $ min i $ fromIntegral l) $ LBS.take i lbs
+
+drop :: Int64 -> SizedByteString -> SizedByteString
+drop i (SizedByteString l lbs) =
+  SizedByteString (fromIntegral $ max 0 $ fromIntegral l - i) $ LBS.drop i lbs
