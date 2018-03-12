@@ -24,6 +24,7 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time
   (minutesToTimeZone, timeZoneMinutes, ZonedTime(..), zonedTimeToUTC)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import Data.Word
 import System.Posix (CMode(..))
 
 import Git.Types
@@ -45,14 +46,14 @@ class GitObject a where
   decodeObject :: MonadFail m => LBS.ByteString -> m a
   decodeObject = lazyParseOnly ((parseHeader >>= objectParser) <* endOfInput)
     where
-      parseHeader :: Parser Integer
+      parseHeader :: Parser Word64
       parseHeader = do
         _ <- (string $ objectName $ Proxy @a) <?> "object name"
         char_ ' ' >> decimal <* char_ '\NUL' <?> "object size"
 
   objectName :: proxy a -> BS.ByteString
   objectBody :: a -> SizedByteString
-  objectParser :: Integer -> Parser a
+  objectParser :: Word64 -> Parser a
 
 instance GitObject Blob where
   objectName _ = "blob"

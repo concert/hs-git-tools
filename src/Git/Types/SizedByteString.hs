@@ -7,11 +7,12 @@ import Prelude hiding (length)
 import Data.Monoid ((<>))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.Word
 import System.IO (Handle, hSeek, SeekMode(..), hTell)
 
 data SizedByteString
   = SizedByteString
-  { sbsLength :: Integer
+  { sbsLength :: Word64
   , sbsBytes :: LBS.ByteString}
 
 instance Monoid SizedByteString where
@@ -23,16 +24,18 @@ fromStrictByteString :: BS.ByteString -> SizedByteString
 fromStrictByteString bs = SizedByteString
   (fromIntegral $ BS.length bs) (LBS.fromStrict bs)
 
-takeFromLazyByteString :: Integer -> LBS.ByteString -> SizedByteString
+takeFromLazyByteString :: Word64 -> LBS.ByteString -> SizedByteString
 takeFromLazyByteString size =
   SizedByteString size . LBS.take (fromIntegral size)
 
 -- | If the file handle is closed, reading from the ByteString will fail, just
 --   like a regular LazyByteString.
 fromHandle :: Handle -> IO SizedByteString
-fromHandle h = SizedByteString <$> getRemainingFileSize h <*> LBS.hGetContents h
+fromHandle h = SizedByteString
+  <$> (fmap fromIntegral $ getRemainingFileSize h)
+  <*> LBS.hGetContents h
 
-length :: SizedByteString -> Integer
+length :: SizedByteString -> Word64
 length = sbsLength
 
 toLazyByteString :: SizedByteString -> LBS.ByteString
