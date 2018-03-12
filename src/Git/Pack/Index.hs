@@ -20,24 +20,10 @@ import Text.Printf (printf)
 import Git.Types.Internal
   ( MmapHandle, MmapFrom(..), MmapTo(..), mmapData
   , mmapWord32be, mmapWord64be, mmapSha1)
-import Git.Types (Sha1(..), sha1Size)
+import Git.Types (Sha1(..), sha1Size, GitError(..))
 
 data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
-data GitError
-  = ErrorWithIO IOError
-  | ParseError String
-  | UnsupportedPackIndexVersion
-  | UnsupportedOperation String
-  | Sha1NotInIndex
-
-instance Show GitError where
-  show e = case e of
-    ErrorWithIO ioe -> "IO error: " ++ show ioe
-    ParseError s -> "Parse error: " ++ s
-    UnsupportedPackIndexVersion -> "Unsupported pack index version"
-    UnsupportedOperation s -> "Unsupported operation: " ++ s
-    Sha1NotInIndex -> "sha1 not in index"
 
 data PackIndexState
   = PackIndexStateV1
