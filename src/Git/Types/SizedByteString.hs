@@ -7,6 +7,7 @@ import Prelude hiding (length)
 import Data.Monoid ((<>))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.String (IsString(..))
 import Data.Word
 import System.IO (Handle, hSeek, SeekMode(..), hTell)
 
@@ -14,6 +15,9 @@ data SizedByteString
   = SizedByteString
   { sbsLength :: Word64
   , sbsBytes :: LBS.ByteString}
+
+instance IsString SizedByteString where
+  fromString = fromStrictByteString . fromString
 
 instance Monoid SizedByteString where
   mempty = SizedByteString 0 mempty
