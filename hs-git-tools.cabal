@@ -36,7 +36,6 @@ library
     , containers
     , cryptohash
     , directory
-    , either
     , filepath
     , mmap
     , mtl
