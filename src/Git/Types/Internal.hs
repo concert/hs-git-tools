@@ -17,6 +17,7 @@ import qualified Data.ByteString.Internal as BSIntern
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 
+import Git.Types.Error (GitError(..))
 import Git.Types.Sha1 (Sha1)
 import qualified Git.Types.Sha1 as Sha1
 
@@ -26,6 +27,9 @@ instance MonadFail (Either String) where
 -- FIXME: replace with Control.Monad.Except.liftEither when >= 2.2.2
 liftEither :: MonadError e m => Either e a -> m a
 liftEither = either throwError return
+
+liftEitherGitError :: MonadError GitError m => Either String a -> m a
+liftEitherGitError = liftEither . first GenericError
 
 firstSuccess
   :: Monad m => (a -> ExceptT e m b) -> [a] -> ExceptT [(a, e)] m (a, b)

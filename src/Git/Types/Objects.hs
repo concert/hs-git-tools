@@ -56,3 +56,10 @@ data Object
   | ObjTree Tree
   | ObjCommit Commit
   | ObjTag Tag
+
+objectType :: Object -> ObjectType
+objectType obj = case obj of
+  ObjBlob _ -> ObjTyBlob
+  ObjTree _ -> ObjTyTree
+  ObjCommit _ -> ObjTyCommit
+  ObjTag _ -> ObjTyTag
