@@ -151,11 +151,11 @@ getPackIndexRecordNo sha1 = do
       :: MonadError GitError m
       => Word32 -> Word32 -> (Word32 -> Sha1) -> m Word32
     findSha1Idx minRn maxRn fetch = let candidate = (minRn + maxRn) `div` 2 in
-      if minRn == maxRn then throwError Sha1NotInIndex else
+      if minRn > maxRn then throwError Sha1NotInIndex else
       case compare (fetch candidate) sha1 of
-        LT -> findSha1Idx candidate maxRn fetch
+        LT -> findSha1Idx (candidate + 1) maxRn fetch
         EQ -> return candidate
-        GT -> findSha1Idx minRn candidate fetch
+        GT -> findSha1Idx minRn (candidate - 1) fetch
 
 getPackRecordCrc
   :: (MonadState PackIndexState m, MonadError GitError m)
