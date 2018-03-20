@@ -141,7 +141,7 @@ getPackIndexRecordNo sha1 = do
       Version1 -> throwError UnsupportedPackIndexVersion
       Version2 -> do
           let (minRecordNo, maxRecordNo) = getPackIndexRecordNoBounds pis sha1
-          recordNo <- findSha1Idx maxRecordNo minRecordNo $ getSha1 $ pisMmap pis
+          recordNo <- findSha1Idx minRecordNo maxRecordNo $ getSha1 $ pisMmap pis
           put $ pis {pisRecordNos = Map.insert sha1 recordNo $ pisRecordNos pis}
           return recordNo
   where
