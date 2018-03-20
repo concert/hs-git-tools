@@ -1,5 +1,6 @@
 module Git.Types.Error where
 
+import Control.Exception (Exception)
 import Data.Word
 import Text.Printf (printf)
 
@@ -32,3 +33,5 @@ instance Show GitError where
     FailedPostDeltaApplicationLengthCheck actual expected -> printf
       "Failed post-delta-application length check: %d (actual) /= %d (expected)"
       actual expected
+
+instance Exception GitError
