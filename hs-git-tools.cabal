@@ -52,6 +52,7 @@ library
     , Git.Pack.Delta
     , Git.Pack.Index
     , Git.Pack.Pack
+    , Git.Pack.PackSet
     , Git.Serialise
     , Git.Store
     , Git.Types

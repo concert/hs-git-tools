@@ -24,7 +24,6 @@ import Git.Types (Sha1(..), sha1Size, GitError(..))
 
 data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
-
 data PackIndexState
   = PackIndexStateV1
     { pisMmap :: MmapHandle
@@ -60,6 +59,13 @@ instance Show PackIndexState where
       totRecs = runIdentity $ evalStateT getPackIndexTotalRecords pis
     in
       printf "<PackIndexState: %s, records: %d>" (show v) totRecs
+
+openPackIndex
+  :: (MonadIO m, MonadError GitError m) => FilePath -> m PackIndexState
+openPackIndex indexPath = do
+  h <- liftIO $ mmapFileForeignPtr indexPath ReadOnly Nothing
+  v <- getPackIndexVersion h
+  return $ packIndexState v h
 
 withPackIndex
   :: MonadIO m
