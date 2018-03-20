@@ -34,8 +34,6 @@ import qualified Git.Types.SizedByteString as SBS
 
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
 
-import Debug.Trace
-
 data PackObjectType
   = PoTyCommit | PoTyTree | PoTyBlob | PoTyTag
   | PoTyOfsDelta | PoTyRefDelta deriving (Show, Eq)
@@ -96,7 +94,6 @@ msb byte = byte .&. 0b10000000 /= 0
 lsbs :: Word8 -> Word8
 lsbs = (.&. 0b01111111)
 
-
 -- | Gets the type of packed object, the start offset of the actual data blob
 --   (i.e. the position in the file after we've read the object header) and the
 --   size of the _uncompressed_ data for the blob.
@@ -104,33 +101,33 @@ getPackObjectInfo
   :: MonadError GitError m
   => PackHandle -> Word64 -> m (PackObjectType, Word64, Word64)
 getPackObjectInfo ph offset = do
-  (objTy, bytesConsumed, objSize) <-
-    either (throwError . ParseError) return $
-        parseOnly objHeadP $
-        -- It's ok to make a long bytestring from the mmapped file, because it
-        -- won't actually be read by the kernel until we need it, and we'll stop
-        -- parsing after the header is done:
-        mmapData (phMmap ph) (FromStart $ fromIntegral offset) ToEnd
+  (objTy, bytesConsumed, objSize) <- either (throwError . ParseError) return $
+    parseOnly objHeadP $
+      -- It's ok to make a long bytestring from the mmapped file, because it
+      -- won't actually be read by the kernel until we need it, and we'll stop
+      -- parsing after the header is done:
+      mmapData (phMmap ph) (FromStart $ fromIntegral offset) ToEnd
   return (objTy, bytesConsumed + offset, objSize)
 
 objHeadP :: Parser (PackObjectType, Word64, Word64)
 objHeadP = do
+  startPos <- tellParsePos
   byte1 <- anyWord8
   ty <- decodePackObjectType $ shift (byte1 .&. 0b01110000) (-4)
-  let lenHead = fromIntegral $ byte1 .&. 0b00001111
+  let lenTail = fromIntegral $ byte1 .&. 0b00001111
   len <- if msb byte1
-    then lengthP lenHead
-    else return lenHead
+    then lengthP 4 lenTail
+    else return lenTail
   pos <- tellParsePos
-  return (ty, fromIntegral pos, len)
+  return (ty, fromIntegral $ pos - startPos, len)
 
-lengthP :: Word64 -> Parser Word64
-lengthP lenHead = do
+lengthP :: Int -> Word64 -> Parser Word64
+lengthP shiftBy lenTail = do
   byte <- anyWord8
-  let lenHead' = shift lenHead 7 .|. (fromIntegral $ lsbs byte)
+  let lenTail' = lenTail .|. shift (fromIntegral $ lsbs byte) shiftBy
   if msb byte
-    then lengthP lenHead'
-    else return lenHead'
+    then lengthP (shiftBy + 7) lenTail'
+    else return lenTail'
 
 deltaInsP :: Parser DeltaInstruction
 deltaInsP = do
@@ -176,8 +173,8 @@ deltaInsP = do
 
 deltaBodyP :: Parser DeltaBody
 deltaBodyP = do
-  sourceLen <- lengthP 0
-  targetLen <- lengthP 0
+  sourceLen <- lengthP 0 0
+  targetLen <- lengthP 0 0
   inss <- many1 deltaInsP
   return $ DeltaBody sourceLen targetLen inss
 
@@ -189,7 +186,7 @@ refDeltaP = do
 
 ofsDeltaP :: Parser OfsDelta
 ofsDeltaP = do
-  negOfs <- lengthP 0
+  negOfs <- lengthP 0 0
   db <- deltaBodyP
   return $ OfsDelta negOfs db
 
