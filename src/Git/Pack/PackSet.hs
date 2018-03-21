@@ -20,7 +20,8 @@ import Git.Types.SizedByteString (SizedByteString)
 
 import Git.Pack.Index
   (PackIndexState, openPackIndex, getPackRecordOffset)
-import Git.Pack.Delta (PackObjectChain(..), pocConsDelta, renderPackObjectChain)
+import Git.Pack.Delta
+  (PackObjectChain(..), pocAppendDelta, renderPackObjectChain)
 import Git.Pack.Pack
   ( PackHandle, openPackFile, getPackObjectData, RefDelta(..), OfsDelta(..)
   , DeltaObject(..))
@@ -60,10 +61,10 @@ getObjectChain sha1 = do
       PackObjectChain ty objData []
     handleEntity ph offset (Right delta) = case delta of
       RefDelta' rd ->
-        pocConsDelta (rdBody rd) <$>
+        pocAppendDelta (rdBody rd) <$>
         getObjectChain (rdBaseSha1 rd)
       OfsDelta' od ->
-        pocConsDelta (odBody od) <$>
+        pocAppendDelta (odBody od) <$>
         getObjectChainFromOffset ph (offset - odBaseNegOfs od)
 
     getObjectChainFromOffset ph offset =

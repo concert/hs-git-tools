@@ -44,8 +44,8 @@ deltaBodyOk :: DeltaBody -> Bool
 deltaBodyOk db =
   sum (fmap deltaInsResultLen $ dbInstructions db) == dbTargetLen db
 
-pocConsDelta :: DeltaBody -> PackObjectChain -> PackObjectChain
-pocConsDelta d poc = poc { pocDeltas = d : pocDeltas poc}
+pocAppendDelta :: DeltaBody -> PackObjectChain -> PackObjectChain
+pocAppendDelta d poc = poc { pocDeltas = pocDeltas poc ++ [d]}
 
 renderPackObjectChain
   :: MonadError GitError m
