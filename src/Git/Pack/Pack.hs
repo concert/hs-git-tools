@@ -7,16 +7,15 @@ module Git.Pack.Pack where
 
 import Prelude hiding (fail, take)
 
-import Codec.Compression.Zlib (decompress)
+import qualified Codec.Compression.Zlib as Zlib
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.ByteString
-  ( Parser, parseOnly, string, (<?>), anyWord8, take, many1, peekWord8'
-  , takeLazyByteString)
+  (Parser, parseOnly, string, (<?>), anyWord8, take, many1, peekWord8')
 import Data.Attoparsec.Binary (anyWord32be)
-import Data.Bits (Bits, (.&.), (.|.), shift, shiftL, testBit)
+import Data.Bits (Bits, (.&.), (.|.), shiftR, shiftL, testBit)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
@@ -32,6 +31,7 @@ import qualified Git.Types.Sha1 as Sha1
 import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
 
+import Git.Serialise (lazyParseOnly)
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
 
 data PackObjectType
@@ -113,21 +113,52 @@ objHeadP :: Parser (PackObjectType, Word64, Word64)
 objHeadP = do
   startPos <- tellParsePos
   byte1 <- anyWord8
-  ty <- decodePackObjectType $ shift (byte1 .&. 0b01110000) (-4)
+  ty <- decodePackObjectType $ shiftR (byte1 .&. 0b01110000) 4
   let lenTail = fromIntegral $ byte1 .&. 0b00001111
   len <- if msb byte1
-    then lengthP 4 lenTail
+    then chunkNumLeP' 4 lenTail
     else return lenTail
   pos <- tellParsePos
   return (ty, fromIntegral $ pos - startPos, len)
 
-lengthP :: Int -> Word64 -> Parser Word64
-lengthP shiftBy lenTail = do
+-- | A Parser for numbers stored in byte-size chunks, with the MSB of each byte
+--   indicating that a further byte should be read and the least significant 7
+--   bits being the number data. The bytes are read in little-endian format
+--   (i.e. the first chunk we read becomes the least significant part of the
+--   output).
+chunkNumLeP' :: Int -> Word64 -> Parser Word64
+chunkNumLeP' shiftBy acc = do
   byte <- anyWord8
-  let lenTail' = lenTail .|. shift (fromIntegral $ lsbs byte) shiftBy
+  let acc' = acc + shiftL (fromIntegral $ lsbs byte) shiftBy
   if msb byte
-    then lengthP (shiftBy + 7) lenTail'
-    else return lenTail'
+    then chunkNumLeP' (shiftBy + 7) acc'
+    else return acc'
+
+-- | The same as chunkNumLeP', but doesn't take an initialisation value for the
+--   accumulator.
+chunkNumLeP :: Parser Word64
+chunkNumLeP = chunkNumLeP' 0 0
+
+-- | A Parser for numbers stored in byte-size chunks, with the MSB of each byte
+--   indicating that a further byte should be read, and the least significant 7
+--   bits being the number data. The bytes are read in big-endian format (i.e.
+--   the first chunk we read becomes the most significant part of the output).
+--
+--   NB. It also does a weird thing with adding one to all but the last byte!
+chunkNumBeP' :: Word64 -> Parser Word64
+chunkNumBeP' acc = do
+  byte <- anyWord8
+  let acc' = shiftL acc 7 + fromIntegral (lsbs byte)
+  if msb byte
+    -- NB: WFT is this + 1 about? the canonical git source has it...
+    -- https://github.com/git/git/blob/master/packfile.c#L1043
+    then chunkNumBeP' (acc' + 1)
+    else return acc'
+
+-- | The same as chunkNumBeP, but doesn't take an initialisation value for the
+--   accumulator.
+chunkNumBeP :: Parser Word64
+chunkNumBeP = chunkNumBeP' 0
 
 deltaInsP :: Parser DeltaInstruction
 deltaInsP = do
@@ -161,34 +192,43 @@ deltaInsP = do
     copyP = do
       byte <- anyWord8
       let ofsCursAdvances = byte .&. 0b00001111
-      let lenCursAdvances = byte .&. 0b01110000
+      let lenCursAdvances = shiftR (byte .&. 0b01110000) 4
       ofs <- leCompressedP ofsCursAdvances 4
       len <- leCompressedP lenCursAdvances 3
       return $ Copy ofs len
     insertP = do
-      len <- lsbs <$> anyWord8
-      dat <- SBS.takeFromLazyByteString (fromIntegral len) <$>
-        takeLazyByteString
+      len <- fromIntegral . lsbs <$> anyWord8
+      dat <- SBS.fromStrictByteString <$> take len
       return $ Insert dat
 
 deltaBodyP :: Parser DeltaBody
 deltaBodyP = do
-  sourceLen <- lengthP 0 0
-  targetLen <- lengthP 0 0
+  sourceLen <- chunkNumLeP
+  targetLen <- chunkNumLeP
   inss <- many1 deltaInsP
   return $ DeltaBody sourceLen targetLen inss
 
-refDeltaP :: Parser RefDelta
-refDeltaP = do
-  sha1 <- take 20 >>= Sha1.fromByteString
-  db <- deltaBodyP
-  return $ RefDelta sha1 db
+parseRefDelta :: (Integral i, MonadFail m) => i -> BS.ByteString -> m RefDelta
+parseRefDelta inflatedSize bs =
+  let
+    (sha1Bs, dataBs) = BS.splitAt 20 bs
+  in do
+    sha1 <- Sha1.fromByteString sha1Bs
+    db <- lazyParseOnly deltaBodyP $ LBS.take (fromIntegral inflatedSize) $
+      Zlib.decompress $ LBS.fromStrict dataBs
+    return $ RefDelta sha1 db
 
-ofsDeltaP :: Parser OfsDelta
-ofsDeltaP = do
-  negOfs <- lengthP 0 0
-  db <- deltaBodyP
-  return $ OfsDelta negOfs db
+parseOfsDelta :: (Integral i, MonadFail m) => i -> BS.ByteString -> m OfsDelta
+parseOfsDelta inflatedSize bs = do
+    (consumed, negOfs) <- either fail return $ parseOnly (withPos chunkNumBeP) bs
+    db <- lazyParseOnly deltaBodyP $ LBS.take (fromIntegral inflatedSize) $
+      Zlib.decompress $ LBS.fromStrict $ BS.drop consumed bs
+    return $ OfsDelta negOfs db
+  where
+    withPos p = do
+      res <- p
+      pos <- tellParsePos
+      return (pos, res)
 
 getPackObjectData
   :: MonadError GitError m
@@ -196,15 +236,16 @@ getPackObjectData
   -> m (Either (ObjectType, SizedByteString) DeltaObject)
 getPackObjectData ph offset = do
     (packObjTy, dataStart, inflatedSize) <- getPackObjectInfo ph offset
-    let objectData = SBS.takeFromLazyByteString (fromIntegral inflatedSize) $
-          decompress $
-          LBS.fromStrict $ mmapData (phMmap ph)
-            (FromStart $ fromIntegral dataStart)
-            (Length $ fromIntegral inflatedSize)
+    let objectData = mmapData (phMmap ph)
+          (FromStart $ fromIntegral dataStart)
+          ToEnd -- The compressed contents may be longer than the inflated!
     case packObjTy of
-      PoTyRefDelta -> Right . RefDelta' <$> doParse refDeltaP objectData
-      PoTyOfsDelta -> Right . OfsDelta' <$> doParse ofsDeltaP objectData
-      _ -> Left . (,objectData) <$> packObjTyToObjTy packObjTy
+      PoTyRefDelta -> Right . RefDelta' <$> pf (parseRefDelta inflatedSize objectData)
+      PoTyOfsDelta -> Right . OfsDelta' <$> pf (parseOfsDelta inflatedSize objectData)
+      _ -> Left . (, decompress inflatedSize objectData) <$>
+          packObjTyToObjTy packObjTy
   where
-    doParse p = either (throwError . ParseError) return . parseOnly p .
-      LBS.toStrict . SBS.toLazyByteString
+    decompress inflatedSize =
+      SBS.takeFromLazyByteString (fromIntegral inflatedSize) .
+      Zlib.decompress . LBS.fromStrict
+    pf = either (throwError . ParseError) return
