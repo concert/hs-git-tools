@@ -15,11 +15,15 @@ data DeltaInstruction
   = Insert {insData :: SizedByteString}
   | Copy {copyOffset :: Word32, copyLength :: Word32}
 
+instance Show DeltaInstruction where
+  show (Insert dat) = printf "<Insert %d>" (SBS.length dat)
+  show (Copy o l) = printf "<Copy %d %d>" o l
+
 data DeltaBody = DeltaBody
   { dbSourceLen :: Word64
   , dbTargetLen :: Word64
   , dbInstructions :: [DeltaInstruction]
-  }
+  } deriving Show
 
 data PackObjectChain
   = PackObjectChain
