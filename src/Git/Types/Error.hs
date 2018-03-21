@@ -13,6 +13,7 @@ data GitError
   | Sha1NotInIndex
   | UnsupportedPackFileVersion
   | UnrecognisedPackObjectType Word8
+  | FailedDeltaConsistencyCheck
   | FailedPreDeltaApplicationLengthCheck Word64 Word64
   | FailedPostDeltaApplicationLengthCheck Word64 Word64
   deriving Eq
@@ -27,6 +28,7 @@ instance Show GitError where
     Sha1NotInIndex -> "sha1 not in index"
     UnsupportedPackFileVersion -> "Unsupported pack file version"
     UnrecognisedPackObjectType w -> "Unrecognised pack object type: " ++ show w
+    FailedDeltaConsistencyCheck -> "Failed delta consistency check"
     FailedPreDeltaApplicationLengthCheck actual expected -> printf
       "Failed pre-delta-application length check: %d (actual) /= %d (expected)"
       actual expected

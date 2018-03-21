@@ -35,6 +35,15 @@ instance Show PackObjectChain where
   show poc = printf "<PackObjectChain: %s %d>" (show $ pocTy poc)
     (length $ pocDeltas poc)
 
+deltaInsResultLen :: DeltaInstruction -> Word64
+deltaInsResultLen di = case di of
+  Insert sbs -> SBS.length sbs
+  Copy _ len -> fromIntegral len
+
+deltaBodyOk :: DeltaBody -> Bool
+deltaBodyOk db =
+  sum (fmap deltaInsResultLen $ dbInstructions db) == dbTargetLen db
+
 pocConsDelta :: DeltaBody -> PackObjectChain -> PackObjectChain
 pocConsDelta d poc = poc { pocDeltas = d : pocDeltas poc}
 
@@ -50,7 +59,11 @@ renderPackObjectChain (PackObjectChain ty baseData deltas) =
 applyDelta
   :: MonadError GitError m
   => SizedByteString -> DeltaBody -> m SizedByteString
-applyDelta base (DeltaBody srcLen targLen inss) = do
+applyDelta base db@(DeltaBody srcLen targLen inss) = do
+  unless (deltaBodyOk db) $
+    -- This is belt-and-braces when coupled with FailedPostDeltaApp... - it's
+    -- a nicer check because we can apply it without shuffling the data:
+    throwError FailedDeltaConsistencyCheck
   unless (SBS.length base == srcLen) $
     throwError $ FailedPreDeltaApplicationLengthCheck (SBS.length base) srcLen
   let new = mconcat $ fmap (applyInstruction base) inss

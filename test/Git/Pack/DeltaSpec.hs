@@ -7,12 +7,20 @@ import Control.Monad.Identity (runIdentity)
 
 import Git.Types (GitError(..), ObjectType(..))
 import Git.Pack.Delta
-  ( DeltaInstruction(..), DeltaBody(..), applyDelta
+  ( DeltaInstruction(..), DeltaBody(..), deltaBodyOk, applyDelta
   , PackObjectChain(..), renderPackObjectChain)
 
 spec :: Spec
 spec = do
   describe "Pack.Delta" $ do
+    describe "deltaBodyOk" $ do
+      it "should note mismatch of instruction output lens vs recorded len" $ do
+        deltaBodyOk (DeltaBody 0 12 [Copy 0 5, Insert "abcdefg"])
+          `shouldBe` True
+        deltaBodyOk (DeltaBody 0 12 [Copy 0 4, Insert "abcdefg"])
+          `shouldBe` False
+        deltaBodyOk (DeltaBody 0 12 [Copy 0 5, Insert "abcdef"])
+          `shouldBe` False
     describe "applyDelta" $ do
       it "should execute a series of instructions correctly" $
         let
@@ -28,8 +36,8 @@ spec = do
         runIdentity (runExceptT $ applyDelta "hello" $ DeltaBody 3 0 [])
         `shouldBe` Left (FailedPreDeltaApplicationLengthCheck 5 3)
 
-      it "should notice an resulting string of incorrect length" $
-        runIdentity (runExceptT $ applyDelta "hello" $ DeltaBody 5 1 [])
+      it "should notice a resulting string of incorrect length" $
+        runIdentity (runExceptT $ applyDelta "hello" $ DeltaBody 5 1 [Copy 6 1])
         `shouldBe` Left (FailedPostDeltaApplicationLengthCheck 0 1)
 
     describe "renderPackObjectData" $ do
