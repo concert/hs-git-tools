@@ -3,7 +3,6 @@
 module Git.Pack.Index where
 
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Identity (runIdentity)
 import Control.Monad.Error.Class (MonadError(..))
 import Control.Monad.Except (ExceptT(..), runExceptT, throwError)
 import Control.Monad.State (StateT, evalStateT)
@@ -20,36 +19,19 @@ import Text.Printf (printf)
 import Git.Types.Internal
   ( MmapHandle, MmapFrom(..), MmapTo(..), mmapData
   , mmapWord32be, mmapWord64be, mmapSha1)
-import Git.Types (Sha1(..), sha1Size)
+import Git.Types (Sha1(..), sha1Size, GitError(..))
 
 data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
-
-data GitError
-  = ErrorWithIO IOError
-  | ParseError String
-  | UnsupportedPackIndexVersion
-  | UnsupportedOperation String
-  | Sha1NotInIndex
-
-instance Show GitError where
-  show e = case e of
-    ErrorWithIO ioe -> "IO error: " ++ show ioe
-    ParseError s -> "Parse error: " ++ s
-    UnsupportedPackIndexVersion -> "Unsupported pack index version"
-    UnsupportedOperation s -> "Unsupported operation: " ++ s
-    Sha1NotInIndex -> "sha1 not in index"
 
 data PackIndexState
   = PackIndexStateV1
     { pisMmap :: MmapHandle
-    , pisFanOutTable :: Map Word8 Word32
     , pisRecordNos :: Map Sha1 Word32
     , pisV1RecordOffsets :: Map Sha1 Word32
     , pisPackFileSha1 :: Maybe Sha1
     , pisSha1 :: Maybe Sha1}
   | PackIndexStateV2
     { pisMmap :: MmapHandle
-    , pisFanOutTable :: Map Word8 Word32
     , pisRecordNos :: Map Sha1 Word32
     , pisRecordCrcs :: Map Sha1 Word32
     , pisV2RecordOffsets :: Map Sha1 Word64
@@ -58,10 +40,8 @@ data PackIndexState
 
 packIndexState :: Version -> MmapHandle -> PackIndexState
 packIndexState v h = case v of
-  Version1 -> PackIndexStateV1
-    h mempty mempty mempty Nothing Nothing
-  Version2 -> PackIndexStateV2
-    h mempty mempty mempty mempty Nothing Nothing
+  Version1 -> PackIndexStateV1 h mempty mempty Nothing Nothing
+  Version2 -> PackIndexStateV2 h mempty mempty mempty Nothing Nothing
 
 pisVersion :: PackIndexState -> Version
 pisVersion PackIndexStateV1 {} = Version1
@@ -71,9 +51,16 @@ instance Show PackIndexState where
   show pis =
     let
       v = pisVersion pis
-      totRecs = runIdentity $ evalStateT getPackIndexTotalRecords pis
+      totRecs = getPackIndexTotalRecords pis
     in
       printf "<PackIndexState: %s, records: %d>" (show v) totRecs
+
+openPackIndex
+  :: (MonadIO m, MonadError GitError m) => FilePath -> m PackIndexState
+openPackIndex indexPath = do
+  h <- liftIO $ mmapFileForeignPtr indexPath ReadOnly Nothing
+  v <- getPackIndexVersion h
+  return $ packIndexState v h
 
 withPackIndex
   :: MonadIO m
@@ -125,34 +112,23 @@ getPackSha1FromIndex = do
 excTIO :: (MonadIO m, MonadError GitError m) => IO a -> m a
 excTIO io = liftIO (try io) >>= either (throwError . ErrorWithIO) return
 
-getFanoutTableEntry
-  :: (MonadState PackIndexState m)
-  => Word8 -> m Word32
-getFanoutTableEntry fotIdx = do
-    pis <- get
-    let fot = pisFanOutTable pis
-    case Map.lookup fotIdx fot of
-      Just fotEntry -> return fotEntry
-      Nothing ->
-        let fotEntry = mmapWord32be (pisMmap pis) $ FromStart $
-              packIndexHeaderSize (pisVersion pis)
-              + 4 * (fromIntegral fotIdx)
-        in do
-          put $ pis {pisFanOutTable = Map.insert fotIdx fotEntry fot}
-          return fotEntry
+getFanoutTableEntry :: PackIndexState -> Word8 -> Word32
+getFanoutTableEntry pis fotIdx = mmapWord32be (pisMmap pis) $ FromStart $
+  packIndexHeaderSize (pisVersion pis) + 4 * (fromIntegral fotIdx)
 
 -- | Examines the pack index file's fan out table to determine the minimum
 --   and maximum record numbers for the given SHA1
-getPackIndexRecordNoBounds
-  :: (MonadState PackIndexState m) => Sha1 -> m (Word32, Word32)
-getPackIndexRecordNoBounds sha1 = let fotIdx = BS.head $ unSha1 sha1 in do
-    minRn <- getFanoutTableEntry $
-      if fotIdx == minBound then fotIdx else fotIdx - 1
-    maxRn <- getFanoutTableEntry fotIdx
-    return (minRn, maxRn)
+getPackIndexRecordNoBounds :: PackIndexState -> Sha1 -> (Word32, Word32)
+getPackIndexRecordNoBounds pis sha1 =
+  let
+    fotIdx = BS.head $ unSha1 sha1
+    minRn = if fotIdx == 0 then 0 else getFanoutTableEntry pis (fotIdx - 1)
+    maxRn = getFanoutTableEntry pis fotIdx
+  in
+    (minRn, maxRn)
 
-getPackIndexTotalRecords :: (MonadState PackIndexState m) => m Word32
-getPackIndexTotalRecords = getFanoutTableEntry 255
+getPackIndexTotalRecords :: PackIndexState -> Word32
+getPackIndexTotalRecords pis = getFanoutTableEntry pis 255
 
 getPackIndexRecordNo
   :: (MonadState PackIndexState m, MonadError GitError m)
@@ -164,8 +140,8 @@ getPackIndexRecordNo sha1 = do
     Nothing -> case pisVersion pis of
       Version1 -> throwError UnsupportedPackIndexVersion
       Version2 -> do
-          (minRecordNo, maxRecordNo) <- getPackIndexRecordNoBounds sha1
-          recordNo <- findSha1Idx maxRecordNo minRecordNo $ getSha1 $ pisMmap pis
+          let (minRecordNo, maxRecordNo) = getPackIndexRecordNoBounds pis sha1
+          recordNo <- findSha1Idx minRecordNo maxRecordNo $ getSha1 $ pisMmap pis
           put $ pis {pisRecordNos = Map.insert sha1 recordNo $ pisRecordNos pis}
           return recordNo
   where
@@ -175,11 +151,11 @@ getPackIndexRecordNo sha1 = do
       :: MonadError GitError m
       => Word32 -> Word32 -> (Word32 -> Sha1) -> m Word32
     findSha1Idx minRn maxRn fetch = let candidate = (minRn + maxRn) `div` 2 in
-      if minRn == maxRn then throwError Sha1NotInIndex else
+      if minRn > maxRn then throwError Sha1NotInIndex else
       case compare (fetch candidate) sha1 of
-        LT -> findSha1Idx candidate maxRn fetch
+        LT -> findSha1Idx (candidate + 1) maxRn fetch
         EQ -> return candidate
-        GT -> findSha1Idx minRn candidate fetch
+        GT -> findSha1Idx minRn (candidate - 1) fetch
 
 getPackRecordCrc
   :: (MonadState PackIndexState m, MonadError GitError m)
@@ -192,7 +168,7 @@ getPackRecordCrc sha1 = do
     Version2 -> case Map.lookup sha1 $ pisRecordCrcs pis of
       Just crc -> return crc
       Nothing -> do
-        totRecs <- getPackIndexTotalRecords
+        let totRecs = getPackIndexTotalRecords pis
         recordNo <- getPackIndexRecordNo sha1
         let crc = mmapWord32be (pisMmap pis) $ FromStart $
               packIndexDataStart Version2
@@ -212,7 +188,7 @@ getPackRecordOffset sha1 =
       Version2 -> case Map.lookup sha1 $ pisV2RecordOffsets pis of
         Just offset -> return offset
         Nothing -> do
-          totRecs <- getPackIndexTotalRecords
+          let totRecs = getPackIndexTotalRecords pis
           recordNo <- getPackIndexRecordNo sha1
           let offset = readOffset (pisMmap pis) totRecs recordNo
           put $ pis

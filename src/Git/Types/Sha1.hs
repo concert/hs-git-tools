@@ -1,7 +1,7 @@
 module Git.Types.Sha1
   ( Sha1, unSha1, sha1Size, fromByteString
   , toHexString, fromHexString
-  , hashLazy
+  , hashLazy, hashSbs
   ) where
 
 import Prelude hiding (fail)
@@ -12,6 +12,9 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
+
+import Git.Types.SizedByteString (SizedByteString)
+import qualified Git.Types.SizedByteString as SBS
 
 newtype Sha1 = Sha1 {unSha1 :: BS.ByteString} deriving (Eq, Ord)
 
@@ -35,3 +38,6 @@ fromHexString s = case Base16.decode $ Char8.pack s of
 
 hashLazy :: LBS.ByteString -> Sha1
 hashLazy = Sha1 . SHA1.hashlazy
+
+hashSbs :: SizedByteString -> Sha1
+hashSbs = hashLazy . SBS.toLazyByteString

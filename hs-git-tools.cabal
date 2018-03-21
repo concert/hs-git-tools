@@ -36,7 +36,6 @@ library
     , containers
     , cryptohash
     , directory
-    , either
     , filepath
     , mmap
     , mtl
@@ -50,11 +49,14 @@ library
   exposed-modules:
       Git
     , Git.Pack
+    , Git.Pack.Delta
     , Git.Pack.Index
     , Git.Pack.Pack
+    , Git.Pack.PackSet
     , Git.Serialise
     , Git.Store
     , Git.Types
+    , Git.Types.Error
     , Git.Types.Internal
     , Git.Types.Objects
     , Git.Types.Sha1
@@ -81,16 +83,22 @@ test-suite hs-git-test
   main-is: Spec.hs
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -XOverloadedStrings
+  ghc-options:
+      -threaded -rtsopts -with-rtsopts=-N -Wall -XScopedTypeVariables
+      -XOverloadedStrings
   build-depends:
       base >=4.7 && <5
     , hs-git-tools
     , attoparsec
     , bytestring
     , knob
+    , mtl
     , hspec
+    , QuickCheck
   other-modules:
       Git.SerialiseSpec
+      Git.Pack.DeltaSpec
+      Git.Pack.PackSpec
       Git.Types.SizedByteStringSpec
       Paths_hs_git_tools
   default-language: Haskell2010
