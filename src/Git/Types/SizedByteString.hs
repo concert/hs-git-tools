@@ -11,12 +11,16 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.String (IsString(..))
 import Data.Word
 import System.IO (Handle, hSeek, SeekMode(..), hTell)
+import Text.Printf (printf)
 
 data SizedByteString
   = SizedByteString
   { sbsLength :: Word64
   , sbsBytes :: LBS.ByteString
-  } deriving (Show, Eq)
+  } deriving Eq
+
+instance Show SizedByteString where
+  show = printf "<SizedByteString: %d>" . sbsLength
 
 instance IsString SizedByteString where
   fromString = fromStrictByteString . fromString
