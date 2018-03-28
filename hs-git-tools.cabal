@@ -53,6 +53,8 @@ library
     , Git.Pack.Index
     , Git.Pack.Pack
     , Git.Pack.PackSet
+    , Git.Refs
+    , Git.Repository
     , Git.Serialise
     , Git.Store
     , Git.Types
