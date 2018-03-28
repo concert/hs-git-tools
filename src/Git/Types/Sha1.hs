@@ -1,5 +1,6 @@
 module Git.Types.Sha1
   ( Sha1, unSha1, sha1Size, fromByteString
+  , sha1HexSize
   , toHexByteString, fromHexByteString
   , toHexString, fromHexString
   , toHexText, fromHexText
@@ -27,6 +28,9 @@ instance Show Sha1 where
 
 sha1Size :: Int
 sha1Size = 20
+
+sha1HexSize :: Int
+sha1HexSize = 40
 
 fromByteString :: MonadFail m => BS.ByteString -> m Sha1
 fromByteString bs | BS.length bs == sha1Size = return $ Sha1 bs
