@@ -7,7 +7,7 @@ import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import Git.Serialise (tellParsePos)
 
 spec :: Spec
-spec = describe "Store" $ do
+spec = describe "Serialise" $ do
   describe "tellParsePos" $ do
     it "should not consume input" $
       parseOnly ((tellParsePos >> string "hello") <* endOfInput) "hello"
