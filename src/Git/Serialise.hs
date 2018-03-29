@@ -4,6 +4,7 @@ module Git.Serialise
   , GitObject, objectType, wrap, unwrap
   , tellParsePos
   , lazyParseOnly, parseSbs
+  , sha1HexParser
   ) where
 
 import Prelude hiding (fail, take)
@@ -164,8 +165,7 @@ instance GitObject Commit where
         commName commEmail (toZonedTime commAt commTz)
         msg
     where
-      sha1StringP = take 40 >>= Sha1.fromHexString . Char8.unpack
-      sha1RowP role = string role >> char ' ' >> sha1StringP <* char '\n'
+      sha1RowP role = string role >> char ' ' >> sha1HexParser <* char '\n'
       treeRowP = sha1RowP "tree"
       parentRowP = sha1RowP "parent"
       emailP = char '<' >> takeTill' (== '>')
@@ -213,6 +213,9 @@ char_ = void . char
 
 satisfyMap :: String -> (Char -> Maybe a) -> Parser a
 satisfyMap errStr f = anyChar >>= maybe (fail errStr) return . f
+
+sha1HexParser :: Parser Sha1
+sha1HexParser = take Sha1.sha1HexSize >>= Sha1.fromHexByteString
 
 oct :: Parser Int
 oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
