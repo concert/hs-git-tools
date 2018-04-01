@@ -14,7 +14,7 @@ import Control.Monad.Fail (MonadFail(..))
 import Blaze.ByteString.Builder (Builder)
 import qualified Blaze.ByteString.Builder as Builder
 import Data.Attoparsec.ByteString.Char8
-  (char, signed, takeTill, anyChar, decimal)
+  (char, signed, takeTill, anyChar, decimal, isDigit, satisfy)
 import Data.Attoparsec.ByteString.Lazy
   ( Parser, Result(..), parse, string, choice, endOfInput
   , takeLazyByteString, many', many1, take, anyWord8, (<?>))
@@ -22,12 +22,13 @@ import qualified Data.Attoparsec.Internal.Types as ApIntern
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
-import Data.Char (ord)
+import Data.Char (ord, digitToInt)
 import Data.Monoid ((<>))
 import Data.List (intercalate, foldl')
 import Data.Proxy (Proxy(..))
 import Data.String (IsString)
 import Data.Tagged (Tagged(..))
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time
@@ -35,6 +36,7 @@ import Data.Time
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Word
 import System.Posix (CMode(..))
+import Text.Printf (printf)
 
 import Git.Types
   (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
@@ -131,7 +133,7 @@ instance GitObject Tree where
 
 instance GitObject Commit where
   objectType _ = ObjTyCommit
-  encodeObject c = metadata <> commitMsg c
+  encodeObject c = metadata <> "\n" <> commitMsg c
     where
       metadata = SBS.fromStrictByteString $ Builder.toByteString $
            sha1RowB "tree" (commitTreeHash c)
@@ -142,13 +144,19 @@ instance GitObject Commit where
              (commitCommitterEmail c) (commitCommittedAt c)
       sha1StringB = b . Char8.pack . Sha1.toHexString
       sha1RowB role sha1 = b role <> b " " <> sha1StringB sha1 <> b "\n"
-      contributorRowB r n e t = b r <> b " " <> b (encodeUtf8 n) <> b "<"
-        <> b (encodeUtf8 e) <> b ">" <> tB t
-      iB :: Show a => a -> Builder
-      iB = b . encodeUtf8 . Text.pack . show
-      tB t = let m = timeZoneMinutes $ zonedTimeZone t in
-           iB (utcTimeToPOSIXSeconds $ zonedTimeToUTC t)
-        <> (if m < 0 then b "-" else b "+") <> iB m
+      contributorRowB r n e t = b r <> b " " <> b (encodeUtf8 n) <> b " <"
+        <> b (encodeUtf8 e) <> b "> " <> tB t <> b "\n"
+      tB t =
+        let
+          tm = floor $ utcTimeToPOSIXSeconds $ zonedTimeToUTC t :: Int
+          tzm = timeZoneMinutes $ zonedTimeZone t
+          (h, m) = divMod tzm 60
+        in
+          bt (Text.pack $ printf "%d" tm)
+          <> b " "
+          <> (if tzm < 0 then b "-" else b "+")
+          <> bt (Text.pack $ printf "%02d" h)
+          <> bt (Text.pack $ printf "%02d" m)
   objectParser size = do
       treeSha1 <- treeRowP
       parentSha1s <- many' parentRowP
@@ -169,6 +177,15 @@ instance GitObject Commit where
       treeRowP = sha1RowP "tree"
       parentRowP = sha1RowP "parent"
       emailP = char '<' >> takeTill' (== '>')
+      twoDigit :: Parser Int
+      twoDigit = do
+        x <- digitToInt <$> satisfy isDigit
+        y <- digitToInt <$> satisfy isDigit
+        return $ 10 * x + y
+      tzMinutes = do
+        hrs <- twoDigit
+        mins <- twoDigit
+        return $ 60 * hrs + mins
       contributorRowP role = do
         _ <- string role
         char_ ' '
@@ -177,7 +194,7 @@ instance GitObject Commit where
         char_ ' '
         posixTime <- fromIntegral @Int <$> decimal
         char_ ' '
-        tz <- minutesToTimeZone <$> signed decimal
+        tz <- minutesToTimeZone <$> signed tzMinutes
         char_ '\n'
         return (name, email, posixTime, tz)
   wrap = ObjCommit
@@ -227,6 +244,9 @@ oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
 
 b :: BS.ByteString -> Builder
 b = Builder.fromByteString
+
+bt :: Text -> Builder
+bt = b . encodeUtf8
 
 toOctBS :: Integral a => a -> BS.ByteString
 toOctBS = BS.pack . fmap (fromIntegral . wordToDigit) . toWords

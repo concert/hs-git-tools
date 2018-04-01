@@ -95,6 +95,7 @@ test-suite hs-git-test
     , bytestring
     , knob
     , mtl
+    , time
     , hspec
     , QuickCheck
   other-modules:
