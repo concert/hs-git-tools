@@ -12,13 +12,16 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Monoid ((<>))
 import qualified Data.Text as Text
+import Data.Tagged (unTagged)
 import Data.Time
   ( ZonedTime(..), TimeOfDay(..), LocalTime(..), TimeZone(..)
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import Git.Serialise
-  ( tellParsePos, decodeObject, encodeObject, decodeLooseObject
+  ( tellParsePos
+  , decodeObject, encodeObject
+  , decodeLooseObject, encodeLooseObject
   , GitObject(unwrap))
 import Git.Types (Commit(..))
 import Git.Types.Internal ()
@@ -71,6 +74,13 @@ spec = describe "Serialise" $ do
           >>= unwrap :: Either String Commit
       in
         decoded `shouldBe` Right fa7a2abb_commit
+
+    it "should encode a real commit correctly" $
+      let (sha1, encoded) = encodeLooseObject fa7a2abb_commit in do
+        encoded `shouldBe` SBS.fromStrictByteString
+          (fa7a2abb_loseHeader <> fa7a2abb_uncompBytes)
+        Just (unTagged sha1) `shouldBe` Sha1.fromHexString
+          "fa7a2abbf5e2457197ba973140fdbba3ad7b47ca"
 
 
 -- | This is raw decompressed commit data from this very git repo (trying to

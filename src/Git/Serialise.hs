@@ -62,7 +62,7 @@ encodeLooseObject obj =
         <> (SBS.fromStrictByteString $ Char8.pack $ show $ SBS.length body)
         <> "\NUL" <> body
     -- FIXME: are we concerned about encoding large files using too much memory?
-    bodySha1 = Tagged $ Sha1.hashSbs body
+    bodySha1 = Tagged $ Sha1.hashSbs encodedWithHeader
   in
     (bodySha1, encodedWithHeader)
 
