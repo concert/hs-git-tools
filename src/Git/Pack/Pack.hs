@@ -28,8 +28,6 @@ import Git.Types (Sha1, sha1Size, GitError(..), ObjectType(..))
 import Git.Types.Internal
   (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
 import qualified Git.Types.Sha1 as Sha1
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
 import Git.Serialise (lazyParseOnly)
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
@@ -198,8 +196,7 @@ deltaInsP = do
       return $ Copy ofs len
     insertP = do
       len <- fromIntegral . lsbs <$> anyWord8
-      dat <- SBS.fromStrictByteString <$> take len
-      return $ Insert dat
+      Insert <$> take len
 
 deltaBodyP :: Parser DeltaBody
 deltaBodyP = do
@@ -233,7 +230,7 @@ parseOfsDelta inflatedSize bs = do
 getPackObjectData
   :: MonadError GitError m
   => PackHandle -> Word64
-  -> m (Either (ObjectType, SizedByteString) DeltaObject)
+  -> m (Either (ObjectType, BS.ByteString) DeltaObject)
 getPackObjectData ph offset = do
     (packObjTy, dataStart, inflatedSize) <- getPackObjectInfo ph offset
     let objectData = mmapData (phMmap ph)
@@ -246,6 +243,6 @@ getPackObjectData ph offset = do
           packObjTyToObjTy packObjTy
   where
     decompress inflatedSize =
-      SBS.takeFromLazyByteString (fromIntegral inflatedSize) .
+      LBS.toStrict . LBS.take (fromIntegral inflatedSize) .
       Zlib.decompress . LBS.fromStrict
     pf = either (throwError . ParseError) return

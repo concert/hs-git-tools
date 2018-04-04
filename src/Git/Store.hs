@@ -16,7 +16,6 @@ import System.IO.Error (isDoesNotExistError)
 import Git.Serialise
   ( GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
 import Git.Types (Sha1, toHexString)
-import qualified Git.Types.SizedByteString as SBS
 import Git.Pack (withPackSet, packSetGetObjectData)
 import Git.Repository (Repo, repoObjectsPath)
 
@@ -30,7 +29,7 @@ storeObject repo obj =
   in do
     createDirectoryIfMissing True dirPath
     handle <- openBinaryFile (dirPath </> filename) WriteMode
-    LBS.hPut handle $ compress $ SBS.toLazyByteString $ encoded
+    LBS.hPut handle $ compress $ LBS.fromStrict $ encoded
     return sha1
 
 retrieveObject :: forall a. GitObject a => Repo -> Tagged a Sha1 -> IO a

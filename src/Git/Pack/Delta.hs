@@ -4,19 +4,18 @@ module Git.Pack.Delta where
 
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError(..))
+import qualified Data.ByteString as BS
 import Data.Word
 import Text.Printf (printf)
 
 import Git.Types (ObjectType, GitError(..))
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
 data DeltaInstruction
-  = Insert {insData :: SizedByteString}
+  = Insert {insData :: BS.ByteString}
   | Copy {copyOffset :: Word32, copyLength :: Word32}
 
 instance Show DeltaInstruction where
-  show (Insert dat) = printf "<Insert %d>" (SBS.length dat)
+  show (Insert dat) = printf "<Insert %d>" (BS.length dat)
   show (Copy o l) = printf "<Copy %d %d>" o l
 
 data DeltaBody = DeltaBody
@@ -28,7 +27,7 @@ data DeltaBody = DeltaBody
 data PackObjectChain
   = PackObjectChain
   { pocTy :: ObjectType
-  , pocBaseData :: SizedByteString
+  , pocBaseData :: BS.ByteString
   , pocDeltas :: [DeltaBody]}
 
 instance Show PackObjectChain where
@@ -37,7 +36,7 @@ instance Show PackObjectChain where
 
 deltaInsResultLen :: DeltaInstruction -> Word64
 deltaInsResultLen di = case di of
-  Insert sbs -> SBS.length sbs
+  Insert dat -> fromIntegral $ BS.length dat
   Copy _ len -> fromIntegral len
 
 deltaBodyOk :: DeltaBody -> Bool
@@ -49,29 +48,30 @@ pocAppendDelta d poc = poc { pocDeltas = pocDeltas poc ++ [d]}
 
 renderPackObjectChain
   :: MonadError GitError m
-  => PackObjectChain -> m (ObjectType, SizedByteString)
+  => PackObjectChain -> m (ObjectType, BS.ByteString)
 renderPackObjectChain (PackObjectChain ty baseData deltas) =
     (ty,) <$> go deltas baseData
   where
     go [] b = return b
     go (d:ds) b = applyDelta b d >>= go ds
 
+-- FIXME: we may want to make a Builder for the final body...?
 applyDelta
   :: MonadError GitError m
-  => SizedByteString -> DeltaBody -> m SizedByteString
+  => BS.ByteString -> DeltaBody -> m BS.ByteString
 applyDelta base db@(DeltaBody srcLen targLen inss) = do
   unless (deltaBodyOk db) $
     -- This is belt-and-braces when coupled with FailedPostDeltaApp... - it's
     -- a nicer check because we can apply it without shuffling the data:
     throwError FailedDeltaConsistencyCheck
-  unless (SBS.length base == srcLen) $
-    throwError $ FailedPreDeltaApplicationLengthCheck (SBS.length base) srcLen
+  unless (fromIntegral (BS.length base) == srcLen) $
+    throwError $ FailedPreDeltaApplicationLengthCheck (BS.length base) srcLen
   let new = mconcat $ fmap (applyInstruction base) inss
-  unless (SBS.length new == targLen) $
-    throwError $ FailedPostDeltaApplicationLengthCheck (SBS.length new) targLen
+  unless (fromIntegral (BS.length new) == targLen) $
+    throwError $ FailedPostDeltaApplicationLengthCheck (BS.length new) targLen
   return new
 
-applyInstruction :: SizedByteString -> DeltaInstruction -> SizedByteString
+applyInstruction :: BS.ByteString -> DeltaInstruction -> BS.ByteString
 applyInstruction base i = case i of
-  Insert sbs -> sbs
-  Copy ofs len -> SBS.take (fromIntegral len) $ SBS.drop (fromIntegral ofs) base
+  Insert bs -> bs
+  Copy ofs len -> BS.take (fromIntegral len) $ BS.drop (fromIntegral ofs) base

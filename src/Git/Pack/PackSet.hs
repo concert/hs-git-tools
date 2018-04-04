@@ -9,6 +9,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.State (StateT(..), evalStateT)
 import Control.Monad.State.Class (MonadState(get, put))
 import Control.Monad.Trans (MonadTrans(..))
+import qualified Data.ByteString as BS
 import Data.List (isSuffixOf)
 import Data.Word
 import System.Directory (listDirectory)
@@ -16,7 +17,6 @@ import System.FilePath.Posix ((</>))
 
 import Git.Types (Sha1, GitError, ObjectType)
 import Git.Types.Internal (replaceSuffix, liftEitherGitError)
-import Git.Types.SizedByteString (SizedByteString)
 
 import Git.Pack.Index
   (PackIndexState, openPackIndex, getPackRecordOffset)
@@ -49,7 +49,7 @@ withPackSet path m = do
 
 packSetGetObjectData
   :: Monad m
-  => Sha1 -> ExceptT GitError (StateT PackSet m) (ObjectType, SizedByteString)
+  => Sha1 -> ExceptT GitError (StateT PackSet m) (ObjectType, BS.ByteString)
 packSetGetObjectData sha1 = getObjectChain sha1 >>= renderPackObjectChain
 
 getObjectChain

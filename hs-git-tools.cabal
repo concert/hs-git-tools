@@ -62,7 +62,6 @@ library
     , Git.Types.Internal
     , Git.Types.Objects
     , Git.Types.Sha1
-    , Git.Types.SizedByteString
     , Lib
   other-modules:
       Paths_hs_git_tools
@@ -106,6 +105,5 @@ test-suite hs-git-test
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec
       Git.Types.Sha1Spec
-      Git.Types.SizedByteStringSpec
       Paths_hs_git_tools
   default-language: Haskell2010
