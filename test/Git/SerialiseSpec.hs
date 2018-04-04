@@ -4,18 +4,25 @@
 module Git.SerialiseSpec where
 
 import Test.Hspec
+import Test.QuickCheck
+import Test.QuickCheck.Instances
 
 import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
+import qualified Data.Text as Text
 import Data.Time
   ( ZonedTime(..), TimeOfDay(..), LocalTime(..), TimeZone(..)
-  , Day(ModifiedJulianDay))
+  , Day(ModifiedJulianDay), utcToZonedTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import Git.Serialise (tellParsePos, decodeObject, encodeObject)
 import Git.Types (Commit(..))
 import Git.Types.Internal ()
 import qualified Git.Types.Sha1 as Sha1
+import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
+
+import Git.Types.Sha1Spec ()
 
 deriving instance Eq ZonedTime
 deriving instance Eq Commit
@@ -31,17 +38,26 @@ spec = describe "Serialise" $ do
       `shouldBe` Right 2
 
   describe "commit encoding" $ do
-    it "should decode correctly" $
+    it "should decode a real commit correctly" $
       let
         decoded = decodeObject (SBS.fromStrictByteString fa7a2abb_uncompBytes)
           :: Either String Commit
       in
         decoded `shouldBe` Right fa7a2abb_commit
 
-    it "should encode correctly" $
+    it "should re-encode a real commit correctly" $
       encodeObject fa7a2abb_commit
       `shouldBe`
       SBS.fromStrictByteString fa7a2abb_uncompBytes
+
+    it "should roundtrip" $ property $ \commit ->
+      let
+        encoded = encodeObject @Commit commit
+        roundtripped = decodeObject encoded :: Either String Commit
+      in
+        counterexample (show $ SBS.toLazyByteString encoded) $
+        counterexample (show roundtripped) $
+        roundtripped == Right commit
 
 
 -- | This is raw decompressed commit data from this very git repo (trying to
@@ -66,3 +82,24 @@ fa7a2abb_commit = Commit
     t d h m s = ZonedTime
       (LocalTime (ModifiedJulianDay d) (TimeOfDay h m s))
       (TimeZone 60 False "")
+
+instance Arbitrary Commit where
+  arbitrary = Commit <$> arbitrary <*> listOf1 arbitrary
+      <*> name <*> email <*> time
+      <*> name <*> email <*> time
+      <*> arbitrary
+    where
+      -- FIXME: filtering out pointy brackets makes the tests go, but we really
+      -- should decide what the rules are about encoding/rejecting names/email
+      -- addresses containing pointy arrows:
+      notPointy = Text.filter (\c -> c /= '<' && c /= '>')
+      name = notPointy . Text.pack <$> listOf1 arbitrary
+      email = notPointy . Text.pack . mconcat <$>
+        sequence [listOf1 arbitrary, pure "@", listOf1 arbitrary]
+      time = do
+        tz <- TimeZone <$> arbitrary <*> pure False <*> pure ""
+        utcToZonedTime tz . posixSecondsToUTCTime . fromRational . toRational
+          <$> choose (0, 10000000 :: Int)
+
+instance Arbitrary SizedByteString where
+  arbitrary = SBS.fromStrictByteString <$> arbitrary

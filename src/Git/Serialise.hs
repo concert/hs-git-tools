@@ -150,7 +150,7 @@ instance GitObject Commit where
         let
           tm = floor $ utcTimeToPOSIXSeconds $ zonedTimeToUTC t :: Int
           tzm = timeZoneMinutes $ zonedTimeZone t
-          (h, m) = divMod tzm 60
+          (h, m) = divMod (abs tzm) 60
         in
           bt (Text.pack $ printf "%d" tm)
           <> b " "
