@@ -5,17 +5,21 @@ module Git.SerialiseSpec where
 
 import Test.Hspec
 import Test.QuickCheck
-import Test.QuickCheck.Instances
+import Test.QuickCheck.Instances ()
 
 import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
+import Data.Monoid ((<>))
 import qualified Data.Text as Text
 import Data.Time
   ( ZonedTime(..), TimeOfDay(..), LocalTime(..), TimeZone(..)
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
-import Git.Serialise (tellParsePos, decodeObject, encodeObject)
+import Git.Serialise
+  ( tellParsePos, decodeObject, encodeObject, decodeLooseObject
+  , GitObject(unwrap))
 import Git.Types (Commit(..))
 import Git.Types.Internal ()
 import qualified Git.Types.Sha1 as Sha1
@@ -45,7 +49,7 @@ spec = describe "Serialise" $ do
       in
         decoded `shouldBe` Right fa7a2abb_commit
 
-    it "should re-encode a real commit correctly" $
+    it "should encode a real commit correctly" $
       encodeObject fa7a2abb_commit
       `shouldBe`
       SBS.fromStrictByteString fa7a2abb_uncompBytes
@@ -59,6 +63,15 @@ spec = describe "Serialise" $ do
         counterexample (show roundtripped) $
         roundtripped == Right commit
 
+  describe "loose object encoding" $ do
+    it "should decode a real commit correctly" $
+      let
+        decoded = decodeLooseObject
+          (LBS.fromStrict $ fa7a2abb_loseHeader <> fa7a2abb_uncompBytes)
+          >>= unwrap :: Either String Commit
+      in
+        decoded `shouldBe` Right fa7a2abb_commit
+
 
 -- | This is raw decompressed commit data from this very git repo (trying to
 --   organise it as a data file for the test via cabal was hard).
@@ -69,6 +82,9 @@ fa7a2abb_uncompBytes = "tree 56558e3275b57381cd04d6cb604dde2f7e773166\n\
     \committer Paul Weaver <paul@concertdaw.co.uk> 1522328367 +0100\n\
     \\n\
     \Fix module name in test\n"
+
+fa7a2abb_loseHeader :: BS.ByteString
+fa7a2abb_loseHeader = "commit 242\NUL"
 
 fa7a2abb_commit :: Commit
 fa7a2abb_commit = Commit

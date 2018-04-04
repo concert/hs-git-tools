@@ -158,13 +158,14 @@ instance GitObject Commit where
           <> bt (Text.pack $ printf "%02d" h)
           <> bt (Text.pack $ printf "%02d" m)
   objectParser size = do
+      startPos <- fromIntegral <$> tellParsePos
       treeSha1 <- treeRowP
       parentSha1s <- many' parentRowP
       (authName, authEmail, authAt, authTz) <- contributorRowP "author"
       (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
       char_ '\n'
-      pos <- tellParsePos
-      msg <- SBS.takeFromLazyByteString (size - fromIntegral  pos) <$>
+      pos <- fromIntegral <$> tellParsePos
+      msg <- SBS.takeFromLazyByteString (startPos + size - pos) <$>
         takeLazyByteString
       return $ Commit
         treeSha1
