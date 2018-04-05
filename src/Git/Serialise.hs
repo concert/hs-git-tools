@@ -118,7 +118,8 @@ instance GitObject Tree where
       fileModeB (CMode o) = b $ toOctBS o
       nameB = b . encodeUtf8
       rowB (TreeRow mode name sha1) =
-        fileModeB mode <> nameB name <> sha1ByteStringB sha1
+        fileModeB mode <> b " " <> nameB name <> b "\NUL"
+        <> sha1ByteStringB sha1
   objectParser _ = Tree <$> many1 rowP
     where
       fileModeP = CMode . fromIntegral <$> oct
