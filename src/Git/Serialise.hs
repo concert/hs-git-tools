@@ -2,6 +2,7 @@ module Git.Serialise
   ( encodeLooseObject, encodeObject
   , decodeLooseObject, decodeObject
   , GitObject, objectType, wrap, unwrap
+  , encodeObjectType
   , tellParsePos
   , lazyParseOnly
   , sha1HexParser
