@@ -25,7 +25,7 @@ import Git.Serialise
   , decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
   , GitObject(objectType, unwrap), encodeObjectType)
-import Git.Types (Commit(..), Tree(..), TreeRow(..), FileMode(..))
+import Git.Types (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
 import Git.Types.Internal ()
 import Git.Types.Sha1 (Sha1)
 import qualified Git.Types.Sha1 as Sha1
@@ -47,6 +47,7 @@ spec = describe "Serialise" $ do
 
     checkEncoding commit_fa7a2abb
     checkEncoding tree_56558e32
+    checkEncoding blob_527d8d43
   where
     checkEncoding
       :: forall a. (GitObject a, Show a, Eq a, Arbitrary a)
@@ -181,3 +182,13 @@ instance Arbitrary Tree where
 
 instance Arbitrary TreeRow where
   arbitrary = TreeRow <$> arbitraryBoundedEnum <*> arbitrary
+
+blob_527d8d43 :: TestObject Blob
+blob_527d8d43 = TestObject
+    (sha1 "527d8d439785ea9d0dd563acc0cdb650d0a8566e")
+    "blob 46\NUL"
+    "# Changelog for hs-git\n\n## Unreleased changes\n" $
+    Blob $ "# Changelog for hs-git\n\n## Unreleased changes\n"
+
+instance Arbitrary Blob where
+  arbitrary = Blob <$> arbitrary
