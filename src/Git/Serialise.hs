@@ -119,7 +119,7 @@ instance GitObject Tree where
       rowB (TreeRow mode name sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
-  objectParser _ = Tree <$> many1 rowP
+  objectParser _ = Tree <$> many' rowP
     where
       fileModeP = oct >>= fileModeFromInt
       nameP = decodeUtf8 <$> takeTill' (== '\NUL')

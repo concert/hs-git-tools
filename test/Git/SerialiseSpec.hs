@@ -11,6 +11,7 @@ import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Monoid ((<>))
+import Data.Proxy
 import qualified Data.Text as Text
 import Data.Tagged (unTagged)
 import Data.Time
@@ -53,14 +54,7 @@ spec = describe "Serialise" $ do
     it "should encode a real commit correctly" $
       encodeObject fa7a2abb_commit `shouldBe` fa7a2abb_uncompBytes
 
-    it "should roundtrip" $ property $ \commit ->
-      let
-        encoded = encodeObject @Commit commit
-        roundtripped = decodeObject encoded :: Either String Commit
-      in
-        counterexample (show encoded) $
-        counterexample (show roundtripped) $
-        roundtripped == Right commit
+    shouldRoundtrip $ Proxy @Commit
 
   describe "tree encoding" $ do
     it "should decode a real tree correctly" $
@@ -71,6 +65,8 @@ spec = describe "Serialise" $ do
 
     it "should encode a real tree correctly" $
       encodeObject _56558e32_tree `shouldBe` _56558e32_uncompBytes
+
+    shouldRoundtrip $ Proxy @Tree
 
   describe "loose object encoding" $ do
     it "should decode a real commit correctly" $
@@ -86,6 +82,18 @@ spec = describe "Serialise" $ do
         encoded `shouldBe` (fa7a2abb_loseHeader <> fa7a2abb_uncompBytes)
         Just (unTagged sha) `shouldBe` Sha1.fromHexString
           "fa7a2abbf5e2457197ba973140fdbba3ad7b47ca"
+  where
+    shouldRoundtrip
+      :: forall a. (GitObject a, Show a, Eq a, Arbitrary a) => Proxy a -> Spec
+    shouldRoundtrip _ = it "should roundtrip" $ property $ \obj ->
+      let
+        encoded = encodeObject @a obj
+        roundtripped = decodeObject encoded :: Either String a
+      in
+        counterexample (show encoded) $
+        counterexample (show roundtripped) $
+        roundtripped == Right obj
+
 
 sha1 :: String -> Sha1
 sha1 = either error id . Sha1.fromHexString
@@ -176,3 +184,11 @@ _56558e32_tree = Tree
     ]
   where
     r mode name sha = TreeRow mode name (sha1 sha)
+
+instance Arbitrary Tree where
+  arbitrary = Tree <$> arbitrary
+
+instance Arbitrary TreeRow where
+  arbitrary = TreeRow <$> arbitraryBoundedEnum <*> nonNull <*> arbitrary
+    where
+      nonNull = Text.filter (/= '\NUL') <$> arbitrary
