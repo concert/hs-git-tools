@@ -36,12 +36,11 @@ import Data.Time
   (minutesToTimeZone, timeZoneMinutes, ZonedTime(..), zonedTimeToUTC)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Word
-import System.Posix (CMode(..))
 import Text.Printf (printf)
 
 import Git.Types
   (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
-  , ObjectType(..), Object(..))
+  , fileModeFromInt, fileModeToInt, ObjectType(..), Object(..))
 import qualified Git.Types.Sha1 as Sha1
 
 encodeObjectType :: IsString str => ObjectType -> str
@@ -115,14 +114,14 @@ instance GitObject Tree where
   encodeObject = Builder.toByteString . mconcat . fmap rowB . unTree
     where
       sha1ByteStringB = b . Sha1.unSha1
-      fileModeB (CMode o) = b $ toOctBS o
+      fileModeB = b . toOctBS . fileModeToInt
       nameB = b . encodeUtf8
       rowB (TreeRow mode name sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
   objectParser _ = Tree <$> many1 rowP
     where
-      fileModeP = CMode . fromIntegral <$> oct
+      fileModeP = oct >>= fileModeFromInt
       nameP = decodeUtf8 <$> takeTill' (== '\NUL')
       rowP = TreeRow <$> (fileModeP <* char ' ') <*> nameP <*> sha1ByteStringP
   wrap = ObjTree

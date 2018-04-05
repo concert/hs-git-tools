@@ -1,11 +1,13 @@
 module Git.Types.Objects where
 
+import Prelude hiding (fail)
+
+import Control.Monad.Fail (MonadFail(..))
 import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
-import System.Posix (FileMode)
 import Text.Printf (printf)
 
 import Git.Types.Sha1 (Sha1)
@@ -16,6 +18,28 @@ instance Show Blob where
   show = printf "<blob: %d>" . BS.length . blobData
 
 newtype Tree = Tree {unTree :: [TreeRow]} deriving (Show, Eq)
+
+data FileMode
+  = Directory
+  | NonExecFile
+  | NonExecGroupWriteFile
+  | ExecFile
+  | SymLink
+  | GitLink
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+fileModeToInt :: FileMode -> Int
+fileModeToInt fm = case fm of
+  Directory -> 0o40000
+  NonExecFile -> 0o100644
+  NonExecGroupWriteFile -> 0o100664
+  ExecFile -> 0o100755
+  SymLink -> 0o120000
+  GitLink -> 0o160000
+
+fileModeFromInt :: MonadFail m => Int -> m FileMode
+fileModeFromInt i = maybe (fail $ "Bad file mode " ++ show i) return $
+  lookup i $ (\fm -> (fileModeToInt fm, fm)) <$> [minBound..]
 
 data TreeRow = TreeRow
   { treeRowMode :: FileMode

@@ -23,7 +23,7 @@ import Git.Serialise
   , decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
   , GitObject(unwrap))
-import Git.Types (Commit(..), Tree(..), TreeRow(..))
+import Git.Types (Commit(..), Tree(..), TreeRow(..), FileMode(..))
 import Git.Types.Internal ()
 import Git.Types.Sha1 (Sha1)
 import qualified Git.Types.Sha1 as Sha1
@@ -161,17 +161,18 @@ _56558e32_looseHeader = "tree 400\NUL"
 
 _56558e32_tree :: Tree
 _56558e32_tree = Tree
-    [ r 0o100644 ".gitignore" "055819ca042b356e0652898cef9a507e59621aef"
-    , r 0o100644 ".travis.yml" "d19ac01d8f48ffb90a7fe4517fd88dce9886885e"
-    , r 0o100644 "ChangeLog.md" "527d8d439785ea9d0dd563acc0cdb650d0a8566e"
-    , r 0o100644 "LICENSE" "e037c729a52c8a6ee5405809a2d6bab20bc27954"
-    , r 0o100644 "README.md" "afe02f04f493a39cb5995fa28fa4cfce156db905"
-    , r 0o100644 "Setup.hs" "9a994af677b0dfd41b4e3b76b3e7e604003d64e1"
-    , r 0o040000 "app" "94c7e3a2b473d672b16ead133ef0031e09f66a5a"
-    , r 0o100644 "hs-git-tools.cabal" "a4701489e088bcc8ff2007292daae5d31939f8c4"
-    , r 0o040000 "src" "c5bc9820cca97974701f7df762ad5038ffadf7d5"
-    , r 0o100644 "stack.yaml" "a2eaa02aac3ca95ee31c6f974f801f293065759f"
-    , r 0o040000 "test" "64f75c4cf8200e810c03471d4830a02db193237b"
+    [ r NonExecFile ".gitignore" "055819ca042b356e0652898cef9a507e59621aef"
+    , r NonExecFile ".travis.yml" "d19ac01d8f48ffb90a7fe4517fd88dce9886885e"
+    , r NonExecFile "ChangeLog.md" "527d8d439785ea9d0dd563acc0cdb650d0a8566e"
+    , r NonExecFile "LICENSE" "e037c729a52c8a6ee5405809a2d6bab20bc27954"
+    , r NonExecFile "README.md" "afe02f04f493a39cb5995fa28fa4cfce156db905"
+    , r NonExecFile "Setup.hs" "9a994af677b0dfd41b4e3b76b3e7e604003d64e1"
+    , r Directory "app" "94c7e3a2b473d672b16ead133ef0031e09f66a5a"
+    , r NonExecFile "hs-git-tools.cabal"
+          "a4701489e088bcc8ff2007292daae5d31939f8c4"
+    , r Directory "src" "c5bc9820cca97974701f7df762ad5038ffadf7d5"
+    , r NonExecFile "stack.yaml" "a2eaa02aac3ca95ee31c6f974f801f293065759f"
+    , r Directory "test" "64f75c4cf8200e810c03471d4830a02db193237b"
     ]
   where
     r mode name sha = TreeRow mode name (sha1 sha)
