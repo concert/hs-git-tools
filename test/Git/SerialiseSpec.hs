@@ -10,6 +10,7 @@ import Test.QuickCheck.Instances ()
 import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.Proxy
 import qualified Data.Text as Text
@@ -168,7 +169,7 @@ _56558e32_looseHeader :: BS.ByteString
 _56558e32_looseHeader = "tree 400\NUL"
 
 _56558e32_tree :: Tree
-_56558e32_tree = Tree
+_56558e32_tree = Tree $ Map.fromList $
     [ r NonExecFile ".gitignore" "055819ca042b356e0652898cef9a507e59621aef"
     , r NonExecFile ".travis.yml" "d19ac01d8f48ffb90a7fe4517fd88dce9886885e"
     , r NonExecFile "ChangeLog.md" "527d8d439785ea9d0dd563acc0cdb650d0a8566e"
@@ -183,12 +184,13 @@ _56558e32_tree = Tree
     , r Directory "test" "64f75c4cf8200e810c03471d4830a02db193237b"
     ]
   where
-    r mode name sha = TreeRow mode name (sha1 sha)
+    r mode name sha = (name, TreeRow mode (sha1 sha))
 
 instance Arbitrary Tree where
-  arbitrary = Tree <$> arbitrary
+  arbitrary = Tree . Map.fromList <$> listOf rowPair
+    where
+      rowPair = (,) <$> nonNull <*> arbitrary
+      nonNull = Text.filter (/= '\NUL') <$> arbitrary
 
 instance Arbitrary TreeRow where
-  arbitrary = TreeRow <$> arbitraryBoundedEnum <*> nonNull <*> arbitrary
-    where
-      nonNull = Text.filter (/= '\NUL') <$> arbitrary
+  arbitrary = TreeRow <$> arbitraryBoundedEnum <*> arbitrary

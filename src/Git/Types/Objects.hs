@@ -4,6 +4,7 @@ import Prelude hiding (fail)
 
 import Control.Monad.Fail (MonadFail(..))
 import qualified Data.ByteString as BS
+import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
@@ -17,7 +18,7 @@ data Blob = Blob {blobData :: BS.ByteString}
 instance Show Blob where
   show = printf "<blob: %d>" . BS.length . blobData
 
-newtype Tree = Tree {unTree :: [TreeRow]} deriving (Show, Eq)
+newtype Tree = Tree {unTree :: Map Text TreeRow} deriving (Show, Eq)
 
 data FileMode
   = Directory
@@ -43,7 +44,6 @@ fileModeFromInt i = maybe (fail $ "Bad file mode " ++ show i) return $
 
 data TreeRow = TreeRow
   { treeRowMode :: FileMode
-  , treeRowName :: Text
   , treeRowSha1 :: Sha1
   } deriving (Show, Eq)
 
