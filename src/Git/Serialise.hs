@@ -3,9 +3,8 @@ module Git.Serialise
   , decodeLooseObject, decodeObject
   , GitObject, objectType, wrap, unwrap
   , encodeObjectType
-  , tellParsePos
+  , tellParsePos, sha1ByteStringP, sha1HexParser, nullTermStringP
   , lazyParseOnly
-  , sha1HexParser
   ) where
 
 import Prelude hiding (fail, take)
@@ -111,6 +110,9 @@ instance GitObject Blob where
 sha1ByteStringP :: Parser Sha1
 sha1ByteStringP = take 20 >>= Sha1.fromByteString
 
+nullTermStringP :: Parser Text
+nullTermStringP = decodeUtf8 <$> takeTill' (== '\NUL')
+
 instance GitObject Tree where
   objectType _ = ObjTyTree
   encodeObject =
@@ -126,7 +128,7 @@ instance GitObject Tree where
     where
       rowP = do
         fileMode <- (oct >>= fileModeFromInt) <* char ' '
-        name <- decodeUtf8 <$> takeTill' (== '\NUL')
+        name <- nullTermStringP
         sha1 <- sha1ByteStringP
         return (name, TreeRow fileMode sha1)
   wrap = ObjTree
