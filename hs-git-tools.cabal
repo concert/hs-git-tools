@@ -48,6 +48,7 @@ library
     , zlib
   exposed-modules:
       Git
+    , Git.Index
     , Git.Pack
     , Git.Pack.Delta
     , Git.Pack.Index
