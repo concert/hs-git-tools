@@ -49,6 +49,8 @@ library
   exposed-modules:
       Git
     , Git.Index
+    , Git.Index.Parser
+    , Git.Index.Types
     , Git.Pack
     , Git.Pack.Delta
     , Git.Pack.Index
