@@ -4,6 +4,9 @@ import Control.Exception (Exception)
 import Data.Word
 import Text.Printf (printf)
 
+-- FIXME: probably want to break this up into individual error types belonging
+-- to the modules that raise the errors, and then here build a wrapper type that
+-- combines all the sub-types:
 data GitError
   = ErrorWithIO IOError
   | GenericError String
