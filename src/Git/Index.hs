@@ -53,9 +53,12 @@ versionFromWord32 w = maybe (throwError UnsupportedIndexVersion) return $
 data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)
 
 type Stage = Word8
-newtype Index
-  = Index {unIndex :: Map (FilePathText, Stage) IndexEntry}
-  deriving Show
+type IndexEntries = Map (FilePathText, Stage) IndexEntry
+data Index
+  = Index
+  { indexVersion :: IndexVersion
+  , indexEntries :: IndexEntries
+  } deriving Show
 
 data IndexEntry
   = IndexEntry
@@ -75,11 +78,13 @@ openIndex :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
 openIndex path = do
   h <- liftIO $ openBinaryFile path ReadMode
   (headBytes, content) <- liftIO $ LBS.splitAt 12 <$> LBS.hGetContents h
-  (version, numEntries) <- either (throwError . ParseError) return $
+  (versionNo, numEntries) <- either (throwError . ParseError) return $
     lazyParseOnly (headerP <* endOfInput) headBytes
-  unless (version == 4) $ throwError UnsupportedIndexVersion
-  either (throwError . ParseError) return $
-    lazyParseOnly (indexP numEntries) content
+  version <- versionFromWord32 versionNo
+  unless (version == Version4) $ throwError UnsupportedIndexVersion
+  entries <- either (throwError . ParseError) return $
+    lazyParseOnly (indexEntriesP numEntries) content
+  return $ Index version entries
 
 headerP :: Parser (Word32, Word32)
 headerP = do
@@ -88,8 +93,8 @@ headerP = do
   numEntries <- anyWord32be
   return (version, numEntries)
 
-indexP :: Word32 -> Parser Index
-indexP = fmap (Index . Map.fromList) . go ""
+indexEntriesP :: Word32 -> Parser IndexEntries
+indexEntriesP = fmap Map.fromList . go ""
   where
     go _ 0 = return []
     go prevPath numEntries = do
