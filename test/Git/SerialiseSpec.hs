@@ -70,7 +70,7 @@ spec = describe "Serialise" $ do
     it "should decode a real commit correctly" $
       let
         decoded = decodeLooseObject
-          (LBS.fromStrict $ fa7a2abb_loseHeader <> fa7a2abb_uncompBytes)
+          (LBS.fromStrict $ fa7a2abb_looseHeader <> fa7a2abb_uncompBytes)
           >>= unwrap :: Either String Commit
       in
         decoded `shouldBe` Right fa7a2abb_commit
@@ -78,7 +78,7 @@ spec = describe "Serialise" $ do
     it "should encode a real commit correctly" $
       let (sha1, encoded) = encodeLooseObject fa7a2abb_commit in do
         encoded `shouldBe` SBS.fromStrictByteString
-          (fa7a2abb_loseHeader <> fa7a2abb_uncompBytes)
+          (fa7a2abb_looseHeader <> fa7a2abb_uncompBytes)
         Just (unTagged sha1) `shouldBe` Sha1.fromHexString
           "fa7a2abbf5e2457197ba973140fdbba3ad7b47ca"
 
@@ -93,8 +93,8 @@ fa7a2abb_uncompBytes = "tree 56558e3275b57381cd04d6cb604dde2f7e773166\n\
     \\n\
     \Fix module name in test\n"
 
-fa7a2abb_loseHeader :: BS.ByteString
-fa7a2abb_loseHeader = "commit 242\NUL"
+fa7a2abb_looseHeader :: BS.ByteString
+fa7a2abb_looseHeader = "commit 242\NUL"
 
 fa7a2abb_commit :: Commit
 fa7a2abb_commit = Commit
