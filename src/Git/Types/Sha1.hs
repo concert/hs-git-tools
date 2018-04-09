@@ -1,5 +1,5 @@
 module Git.Types.Sha1
-  ( Sha1, unSha1, sha1Size, fromByteString
+  ( Sha1, unsafeSha1, unSha1, sha1Size, fromByteString
   , sha1HexSize
   , toHexByteString, fromHexByteString
   , toHexString, fromHexString
@@ -22,6 +22,9 @@ import Git.Types.SizedByteString (SizedByteString)
 import qualified Git.Types.SizedByteString as SBS
 
 newtype Sha1 = Sha1 {unSha1 :: BS.ByteString} deriving (Eq, Ord)
+
+unsafeSha1 :: BS.ByteString -> Sha1
+unsafeSha1 = Sha1
 
 instance Show Sha1 where
   show sha1 = "sha1: " ++ toHexString sha1
