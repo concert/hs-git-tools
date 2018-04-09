@@ -35,6 +35,21 @@ import Git.Types.Internal ()
 
 type FilePathText = Text
 
+data IndexVersion =
+  Version1 | Version2 | Version3 | Version4
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+versionToWord32 :: IndexVersion -> Word32
+versionToWord32 v = case v of
+  Version1 -> 1
+  Version2 -> 2
+  Version3 -> 3
+  Version4 -> 4
+
+versionFromWord32 :: MonadError GitError m => Word32 -> m IndexVersion
+versionFromWord32 w = maybe (throwError UnsupportedIndexVersion) return $
+  lookup w [(versionToWord32 v, v) | v <- [minBound..]]
+
 data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)
 
 type Stage = Word8
