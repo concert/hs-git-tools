@@ -40,7 +40,7 @@ fileModeToInt fm = case fm of
 
 fileModeFromInt :: MonadFail m => Int -> m FileMode
 fileModeFromInt i = maybe (fail $ "Bad file mode " ++ show i) return $
-  lookup i $ (\fm -> (fileModeToInt fm, fm)) <$> [minBound..]
+  lookup i [(fileModeToInt fm, fm) | fm <- [minBound..]]
 
 data TreeRow = TreeRow
   { treeRowMode :: FileMode
