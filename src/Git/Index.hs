@@ -38,12 +38,11 @@ import Git.Types.Internal ()
 type FilePathText = Text
 
 data IndexVersion =
-  Version1 | Version2 | Version3 | Version4
+  Version2 | Version3 | Version4
   deriving (Show, Eq, Ord, Enum, Bounded)
 
 versionToWord32 :: IndexVersion -> Word32
 versionToWord32 v = case v of
-  Version1 -> 1
   Version2 -> 2
   Version3 -> 3
   Version4 -> 4
