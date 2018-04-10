@@ -4,7 +4,7 @@ module Git.Types.Sha1
   , toHexByteString, fromHexByteString
   , toHexString, fromHexString
   , toHexText, fromHexText
-  , hashLazy, hashSbs
+  , hashStrict, hashLazy
   ) where
 
 import Prelude hiding (fail)
@@ -17,9 +17,6 @@ import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
-
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
 newtype Sha1 = Sha1 {unSha1 :: BS.ByteString} deriving (Eq, Ord)
 
@@ -59,8 +56,8 @@ fromHexText = fromHexByteString . encodeUtf8
 toHexText :: Sha1 -> Text
 toHexText = decodeUtf8 . toHexByteString
 
+hashStrict :: BS.ByteString -> Sha1
+hashStrict = hashLazy . LBS.fromStrict
+
 hashLazy :: LBS.ByteString -> Sha1
 hashLazy = Sha1 . SHA1.hashlazy
-
-hashSbs :: SizedByteString -> Sha1
-hashSbs = hashLazy . SBS.toLazyByteString

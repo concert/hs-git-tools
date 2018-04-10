@@ -1,5 +1,6 @@
 module Git.Types.Objects where
 
+import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
@@ -8,13 +9,11 @@ import System.Posix (FileMode)
 import Text.Printf (printf)
 
 import Git.Types.Sha1 (Sha1)
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
-data Blob = Blob {blobData :: SizedByteString}
+data Blob = Blob {blobData :: BS.ByteString}
 
 instance Show Blob where
-  show = printf "<blob: %d>" . SBS.length . blobData
+  show = printf "<blob: %d>" . BS.length . blobData
 
 newtype Tree = Tree {unTree :: [TreeRow]} deriving (Show, Eq)
 
@@ -33,7 +32,7 @@ data Commit = Commit
   , commitCommitter :: Text
   , commitCommitterEmail :: Text
   , commitCommittedAt :: ZonedTime
-  , commitMsg :: SizedByteString
+  , commitMsg :: BS.ByteString
   }
 
 instance Show Commit where

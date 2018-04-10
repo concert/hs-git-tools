@@ -14,8 +14,10 @@ data GitError
   | UnsupportedPackFileVersion
   | UnrecognisedPackObjectType Word8
   | FailedDeltaConsistencyCheck
-  | FailedPreDeltaApplicationLengthCheck Word64 Word64
-  | FailedPostDeltaApplicationLengthCheck Word64 Word64
+  -- FIXME: decide about what type lengths and offsets should be, given
+  -- ByteString's API...
+  | FailedPreDeltaApplicationLengthCheck Int Word64
+  | FailedPostDeltaApplicationLengthCheck Int Word64
   deriving Eq
 
 instance Show GitError where

@@ -26,8 +26,6 @@ import Git.Serialise
 import Git.Types (Commit(..))
 import Git.Types.Internal ()
 import qualified Git.Types.Sha1 as Sha1
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
 import Git.Types.Sha1Spec ()
 
@@ -47,22 +45,19 @@ spec = describe "Serialise" $ do
   describe "commit encoding" $ do
     it "should decode a real commit correctly" $
       let
-        decoded = decodeObject (SBS.fromStrictByteString fa7a2abb_uncompBytes)
-          :: Either String Commit
+        decoded = decodeObject fa7a2abb_uncompBytes :: Either String Commit
       in
         decoded `shouldBe` Right fa7a2abb_commit
 
     it "should encode a real commit correctly" $
-      encodeObject fa7a2abb_commit
-      `shouldBe`
-      SBS.fromStrictByteString fa7a2abb_uncompBytes
+      encodeObject fa7a2abb_commit `shouldBe` fa7a2abb_uncompBytes
 
     it "should roundtrip" $ property $ \commit ->
       let
         encoded = encodeObject @Commit commit
         roundtripped = decodeObject encoded :: Either String Commit
       in
-        counterexample (show $ SBS.toLazyByteString encoded) $
+        counterexample (show encoded) $
         counterexample (show roundtripped) $
         roundtripped == Right commit
 
@@ -77,8 +72,7 @@ spec = describe "Serialise" $ do
 
     it "should encode a real commit correctly" $
       let (sha1, encoded) = encodeLooseObject fa7a2abb_commit in do
-        encoded `shouldBe` SBS.fromStrictByteString
-          (fa7a2abb_looseHeader <> fa7a2abb_uncompBytes)
+        encoded `shouldBe` (fa7a2abb_looseHeader <> fa7a2abb_uncompBytes)
         Just (unTagged sha1) `shouldBe` Sha1.fromHexString
           "fa7a2abbf5e2457197ba973140fdbba3ad7b47ca"
 
@@ -126,6 +120,3 @@ instance Arbitrary Commit where
         tz <- TimeZone <$> arbitrary <*> pure False <*> pure ""
         utcToZonedTime tz . posixSecondsToUTCTime . fromRational . toRational
           <$> choose (0, 10000000 :: Int)
-
-instance Arbitrary SizedByteString where
-  arbitrary = SBS.fromStrictByteString <$> arbitrary

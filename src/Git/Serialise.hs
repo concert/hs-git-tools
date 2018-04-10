@@ -3,7 +3,7 @@ module Git.Serialise
   , decodeLooseObject, decodeObject
   , GitObject, objectType, wrap, unwrap
   , tellParsePos
-  , lazyParseOnly, parseSbs
+  , lazyParseOnly
   , sha1HexParser
   ) where
 
@@ -13,11 +13,12 @@ import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Blaze.ByteString.Builder (Builder)
 import qualified Blaze.ByteString.Builder as Builder
+import Data.Attoparsec.ByteString (parseOnly)
 import Data.Attoparsec.ByteString.Char8
   (char, signed, takeTill, anyChar, decimal, isDigit, satisfy)
 import Data.Attoparsec.ByteString.Lazy
   ( Parser, Result(..), parse, string, choice, endOfInput
-  , takeLazyByteString, many', many1, take, anyWord8, (<?>))
+  , takeByteString, many', many1, take, anyWord8, (<?>))
 import qualified Data.Attoparsec.Internal.Types as ApIntern
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
@@ -42,8 +43,6 @@ import Git.Types
   (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
   , ObjectType(..), Object(..))
 import qualified Git.Types.Sha1 as Sha1
-import Git.Types.SizedByteString (SizedByteString)
-import qualified Git.Types.SizedByteString as SBS
 
 encodeObjectType :: IsString str => ObjectType -> str
 encodeObjectType objTy = case objTy of
@@ -53,16 +52,16 @@ encodeObjectType objTy = case objTy of
   ObjTyTag -> "tag"
 
 encodeLooseObject
-  :: forall a. GitObject a => a -> (Tagged a Sha1, SizedByteString)
+  :: forall a. GitObject a => a -> (Tagged a Sha1, BS.ByteString)
 encodeLooseObject obj =
   let
     body = encodeObject obj
     encodedWithHeader =
         encodeObjectType (objectType $ Proxy @a) <> " "
-        <> (SBS.fromStrictByteString $ Char8.pack $ show $ SBS.length body)
+        <> (Char8.pack $ printf "%d" $ BS.length body)
         <> "\NUL" <> body
     -- FIXME: are we concerned about encoding large files using too much memory?
-    bodySha1 = Tagged $ Sha1.hashSbs encodedWithHeader
+    bodySha1 = Tagged $ Sha1.hashStrict encodedWithHeader
   in
     (bodySha1, encodedWithHeader)
 
@@ -87,13 +86,14 @@ looseObjectParser = do
 decodeLooseObject :: MonadFail m => LBS.ByteString -> m Object
 decodeLooseObject = lazyParseOnly (looseObjectParser <* endOfInput)
 
-decodeObject :: (MonadFail m, GitObject a) => SizedByteString -> m a
-decodeObject sbs = parseSbs (objectParser (SBS.length sbs) <* endOfInput) sbs
+decodeObject :: (MonadFail m, GitObject a) => BS.ByteString -> m a
+decodeObject bs = either fail return $ parseOnly
+  (objectParser (fromIntegral $ BS.length bs) <* endOfInput) bs
 
 
 class GitObject a where
   objectType :: proxy a -> ObjectType
-  encodeObject :: a -> SizedByteString
+  encodeObject :: a -> BS.ByteString
   objectParser :: Word64 -> Parser a
 
   wrap :: a -> Object
@@ -102,8 +102,7 @@ class GitObject a where
 instance GitObject Blob where
   objectType _ = ObjTyBlob
   encodeObject = blobData
-  objectParser size =
-    Blob . SBS.takeFromLazyByteString size <$> takeLazyByteString
+  objectParser size = Blob . BS.take (fromIntegral size) <$> takeByteString
   wrap = ObjBlob
   unwrap (ObjBlob blob) = return blob
   unwrap _ = fail "Incorrect object type"
@@ -113,8 +112,7 @@ sha1ByteStringP = take 20 >>= Sha1.fromByteString
 
 instance GitObject Tree where
   objectType _ = ObjTyTree
-  encodeObject = SBS.fromStrictByteString . Builder.toByteString .
-      mconcat . fmap rowB . unTree
+  encodeObject = Builder.toByteString . mconcat . fmap rowB . unTree
     where
       sha1ByteStringB = b . Sha1.unSha1
       fileModeB (CMode o) = b $ toOctBS o
@@ -135,7 +133,7 @@ instance GitObject Commit where
   objectType _ = ObjTyCommit
   encodeObject c = metadata <> "\n" <> commitMsg c
     where
-      metadata = SBS.fromStrictByteString $ Builder.toByteString $
+      metadata = Builder.toByteString $
            sha1RowB "tree" (commitTreeHash c)
         <> mconcat (sha1RowB "parent" <$> commitParents c)
         <> contributorRowB "author" (commitAuthor c)
@@ -158,15 +156,14 @@ instance GitObject Commit where
           <> bt (Text.pack $ printf "%02d" h)
           <> bt (Text.pack $ printf "%02d" m)
   objectParser size = do
-      startPos <- fromIntegral <$> tellParsePos
+      startPos <- tellParsePos
       treeSha1 <- treeRowP
       parentSha1s <- many' parentRowP
       (authName, authEmail, authAt, authTz) <- contributorRowP "author"
       (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
       char_ '\n'
-      pos <- fromIntegral <$> tellParsePos
-      msg <- SBS.takeFromLazyByteString (startPos + size - pos) <$>
-        takeLazyByteString
+      pos <- tellParsePos
+      msg <- BS.take (startPos + fromIntegral size - pos) <$> takeByteString
       return $ Commit
         treeSha1
         parentSha1s
@@ -219,9 +216,6 @@ lazyParseOnly p bs = case parse p bs of
 tellParsePos :: Parser Int
 tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
   success t pos more (ApIntern.fromPos pos)
-
-parseSbs :: MonadFail m => Parser a -> SizedByteString -> m a
-parseSbs p = lazyParseOnly p . SBS.toLazyByteString
 
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
