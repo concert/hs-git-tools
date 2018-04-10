@@ -1,16 +1,27 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE
+    BinaryLiterals
+  , FlexibleContexts
+#-}
 
 module Git.Index.Types where
 
+import Prelude hiding (fail)
+
+import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Except (MonadError(..))
+import Data.Bits ((.&.), shiftR)
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time.Clock.POSIX (POSIXTime)
 import Data.Word
-import System.Posix.Types (DeviceID, FileID, UserID, GroupID)
+import System.Posix.Files
+  (FileStatus, deviceID, fileID, fileMode, fileOwner, fileGroup, fileSize
+  , statusChangeTimeHiRes, modificationTimeHiRes)
+import System.Posix.Types
+  (DeviceID, FileID, UserID, GroupID, FileOffset, CMode(..))
 
-import Git.Types (Sha1, FileMode, GitError(..))
+import Git.Types (Sha1, FileMode(..), fileModeFromInt, GitError(..))
 
 
 type FilePathText = Text
@@ -57,3 +68,31 @@ data IndexEntry
   , ieSha1 :: Sha1
   , ieFlags :: Set Flag
   } deriving (Show, Eq)
+
+gfsFromStat :: MonadFail m => FileStatus -> m GitFileStat
+gfsFromStat fs = do
+    fm <- normaliseFileMode $ fileMode fs
+    return $ GitFileStat
+      (statusChangeTimeHiRes fs) (modificationTimeHiRes fs)
+      (deviceID fs) (fileID fs) fm
+      (fileOwner fs) (fileGroup fs)
+      (boundSize $ fileSize fs)
+  where
+    boundSize :: FileOffset -> Word32
+    boundSize fo | fo <= fromIntegral (maxBound @Word32) = fromIntegral fo
+                 | otherwise = maxBound
+
+-- | Heuristically convert some unsupported file modes into
+--   supported ones, failing if there's no way to accomodate the file type.
+normaliseFileMode :: MonadFail m => CMode -> m FileMode
+normaliseFileMode (CMode i) = case fileTy of
+  0o100 -> return normPerms
+  _ -> fileModeFromInt $ fromIntegral i
+  where
+    fileTy = shiftR (i .&. 0o777000) 9
+    userExec = 0b001000000 .&. i /= 0
+    groupWrite =  0b010000 .&. i /= 0
+    normPerms
+      | userExec = ExecFile
+      | groupWrite = NonExecGroupWriteFile
+      | otherwise = NonExecFile
