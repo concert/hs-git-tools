@@ -13,7 +13,9 @@ import Data.Attoparsec.ByteString
   (Parser, (<?>), string, endOfInput, many1, satisfy, takeTill)
 import Data.Bits (Bits, (.&.), shiftR, testBit)
 import qualified Data.ByteString.Lazy as LBS
+import Data.Foldable (foldl')
 import Data.Monoid ((<>))
+import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -59,7 +61,7 @@ headerP = do
   return (version, numEntries)
 
 indexEntriesP :: IndexVersion -> Word32 -> Parser IndexEntries
-indexEntriesP version = fmap Map.fromList . go (Path.rel "")
+indexEntriesP version = fmap momFromList . go (Path.rel "")
   where
     go _ 0 = return []
     go prevPath numEntries = do
@@ -134,3 +136,10 @@ v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
 
 lowMask :: (Bits a, Num a) => a -> Int -> a
 lowMask bits n = bits .&. 2 ^ n - 1
+
+momFromList :: (Ord k1, Ord k2) => [((k1, k2), v)] -> Map k1 (Map k2 v)
+momFromList = foldl' f mempty
+  where
+    f acc ((k1, k2), v) = Map.alter (overK2M k2 v) k1 acc
+    overK2M :: Ord k2 => k2 -> v -> Maybe (Map k2 v) -> Maybe (Map k2 v)
+    overK2M k2 v = Just . Map.insert k2 v . maybe mempty id

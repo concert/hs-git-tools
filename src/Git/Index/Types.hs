@@ -42,7 +42,7 @@ versionFromWord32 w = maybe (throwError UnsupportedIndexVersion) return $
 data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)
 
 type Stage = Word8
-type IndexEntries = Map (Path.RelFileDir, Stage) IndexEntry
+type IndexEntries = Map Path.RelFileDir (Map  Stage IndexEntry)
 data Index
   = Index
   { indexVersion :: IndexVersion
