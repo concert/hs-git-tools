@@ -39,16 +39,21 @@ data Index
   , indexEntries :: IndexEntries
   } deriving Show
 
+data GitFileStat
+  = GitFileStat
+  { gfsMetaDataChangedAt :: POSIXTime
+  , gfsChangedAt :: POSIXTime
+  , gfsDevId :: DeviceID
+  , gfsInodeNo :: FileID
+  , gfsMode :: FileMode
+  , gfsUid :: UserID
+  , gfsGid :: GroupID
+  , gfsSize :: Word32  -- System.Posix.Types.FileOffset truncated to 32-bit
+  } deriving (Show, Eq)
+
 data IndexEntry
   = IndexEntry
-  { ieMetaDataChangedAt :: POSIXTime
-  , ieChangedAt :: POSIXTime
-  , ieDevId :: DeviceID
-  , ieInodeNo :: FileID
-  , ieMode :: FileMode
-  , ieUid :: UserID
-  , ieGid :: GroupID
-  , ieSize :: Word32  -- System.Posix.Types.FileOffset truncated to 32-bit
+  { ieGfs :: GitFileStat
   , ieSha1 :: Sha1
   , ieFlags :: Set Flag
   } deriving (Show, Eq)

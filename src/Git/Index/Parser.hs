@@ -30,7 +30,7 @@ import Git.Serialise (lazyParseOnly, sha1ByteStringP, nullTermStringP)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
   ( FilePathText, Index(..), IndexVersion(..), versionFromWord32
-  , IndexEntry(..), IndexEntries
+  , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage)
 
 
@@ -63,6 +63,16 @@ indexEntriesP version = fmap Map.fromList . go ""
 entryP
   :: IndexVersion -> FilePathText -> Parser ((FilePathText, Stage), IndexEntry)
 entryP version prevPath = do
+  gfs <- gfsP
+  sha1 <- sha1ByteStringP
+  (stage, flags) <- flagsP version
+  path <- case version of
+        Version4 -> v4PathP prevPath
+        _ -> v1_3PathP
+  return ((path, stage), IndexEntry gfs sha1 flags)
+
+gfsP :: Parser GitFileStat
+gfsP = do
   ctime <- posixTimeP
   mtime <- posixTimeP
   devId <- CDev . fromIntegral <$> anyWord32be
@@ -71,14 +81,7 @@ entryP version prevPath = do
   uid <- CUid <$> anyWord32be
   gid <- CGid <$> anyWord32be
   size <- anyWord32be
-  sha1 <- sha1ByteStringP
-  (stage, flags) <- flagsP version
-  path <- case version of
-        Version4 -> v4PathP prevPath
-        _ -> v1_3PathP
-  return
-    ( (path, stage)
-    , IndexEntry ctime mtime devId inodeNo mode uid gid size sha1 flags)
+  return $ GitFileStat ctime mtime devId inodeNo mode uid gid size
 
 posixTimeP :: Parser POSIXTime
 posixTimeP = do
