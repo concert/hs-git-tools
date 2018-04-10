@@ -87,7 +87,7 @@ sha1 = either error id . Sha1.fromHexString
 
 data TestObject objTy
   = TestObject
-  { toSha1 :: Sha1, toLoseHeader :: BS.ByteString, toBody :: BS.ByteString
+  { toSha1 :: Sha1, toLooseHeader :: BS.ByteString, toBody :: BS.ByteString
   , toObject :: objTy}
 
 -- | This is raw decompressed commit data from this very git repo (trying to
