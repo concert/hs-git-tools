@@ -39,6 +39,7 @@ library
     , filepath
     , mmap
     , mtl
+    , pathtype
     , tagged
     , temporary
     , text

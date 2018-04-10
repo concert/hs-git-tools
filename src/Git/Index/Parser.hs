@@ -23,20 +23,26 @@ import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
 import System.IO (openBinaryFile, IOMode(..))
+import qualified System.Path.Posix as Path
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
 import Git.Serialise (lazyParseOnly, sha1ByteStringP, nullTermStringP)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
-  ( FilePathText, Index(..), IndexVersion(..), versionFromWord32
+  ( Index(..), IndexVersion(..), versionFromWord32
   , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage)
 
 
-openIndex :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
+openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
+openIndex' path = p path >>= openIndex
+  where
+    p = either fail return . Path.parse
+
+openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Index
 openIndex path = do
-  h <- liftIO $ openBinaryFile path ReadMode
+  h <- liftIO $ openBinaryFile (Path.toString path) ReadMode
   (headBytes, content) <- liftIO $ LBS.splitAt 12 <$> LBS.hGetContents h
   (versionNo, numEntries) <- either (throwError . ParseError) return $
     lazyParseOnly (headerP <* endOfInput) headBytes
@@ -53,7 +59,7 @@ headerP = do
   return (version, numEntries)
 
 indexEntriesP :: IndexVersion -> Word32 -> Parser IndexEntries
-indexEntriesP version = fmap Map.fromList . go ""
+indexEntriesP version = fmap Map.fromList . go (Path.rel "")
   where
     go _ 0 = return []
     go prevPath numEntries = do
@@ -61,7 +67,8 @@ indexEntriesP version = fmap Map.fromList . go ""
       (entryData:) <$> go path (numEntries - 1)
 
 entryP
-  :: IndexVersion -> FilePathText -> Parser ((FilePathText, Stage), IndexEntry)
+  :: IndexVersion -> Path.RelFileDir
+  -> Parser ((Path.RelFileDir, Stage), IndexEntry)
 entryP version prevPath = do
   gfs <- gfsP
   sha1 <- sha1ByteStringP
@@ -116,14 +123,14 @@ flagsP version = do
            (flag SkipWorkTree $ testBit bits 14)
         <> (flag IntentToAdd $ testBit bits 13)
 
-v1_3PathP :: Parser FilePathText
-v1_3PathP = fmap decodeUtf8 $ takeTill (== 0) <* many1 (satisfy (== 0))
+v1_3PathP :: Parser Path.RelFileDir
+v1_3PathP = fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0) <* many1 (satisfy (== 0))
 
-v4PathP :: FilePathText -> Parser FilePathText
-v4PathP prevPath = do
+v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
+v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
   cut <- fromIntegral <$> chunkNumBeP
   new <- nullTermStringP
-  return $ Text.dropEnd cut prevPath <> new
+  return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> new
 
 lowMask :: (Bits a, Num a) => a -> Int -> a
 lowMask bits n = bits .&. 2 ^ n - 1

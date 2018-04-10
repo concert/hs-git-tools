@@ -15,6 +15,7 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time.Clock.POSIX (POSIXTime)
 import Data.Word
+import qualified System.Path as Path
 import System.Posix.Files
   (FileStatus, deviceID, fileID, fileMode, fileOwner, fileGroup, fileSize
   , statusChangeTimeHiRes, modificationTimeHiRes)
@@ -23,8 +24,6 @@ import System.Posix.Types
 
 import Git.Types (Sha1, FileMode(..), fileModeFromInt, GitError(..))
 
-
-type FilePathText = Text
 
 data IndexVersion =
   Version2 | Version3 | Version4
@@ -43,7 +42,7 @@ versionFromWord32 w = maybe (throwError UnsupportedIndexVersion) return $
 data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)
 
 type Stage = Word8
-type IndexEntries = Map (FilePathText, Stage) IndexEntry
+type IndexEntries = Map (Path.RelFileDir, Stage) IndexEntry
 data Index
   = Index
   { indexVersion :: IndexVersion
