@@ -2,6 +2,7 @@ module Git.Serialise
   ( encodeLooseObject, encodeObject
   , decodeLooseObject, decodeObject
   , GitObject, objectType, wrap, unwrap
+  , encodeObjectType
   , tellParsePos
   , lazyParseOnly
   , sha1HexParser
@@ -24,6 +25,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord, digitToInt)
+import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.List (intercalate, foldl')
 import Data.Proxy (Proxy(..))
@@ -36,12 +38,11 @@ import Data.Time
   (minutesToTimeZone, timeZoneMinutes, ZonedTime(..), zonedTimeToUTC)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Word
-import System.Posix (CMode(..))
 import Text.Printf (printf)
 
 import Git.Types
   (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
-  , ObjectType(..), Object(..))
+  , fileModeFromInt, fileModeToInt, ObjectType(..), Object(..))
 import qualified Git.Types.Sha1 as Sha1
 
 encodeObjectType :: IsString str => ObjectType -> str
@@ -112,18 +113,22 @@ sha1ByteStringP = take 20 >>= Sha1.fromByteString
 
 instance GitObject Tree where
   objectType _ = ObjTyTree
-  encodeObject = Builder.toByteString . mconcat . fmap rowB . unTree
+  encodeObject =
+      Builder.toByteString . mconcat . fmap rowB . Map.toList . unTree
     where
       sha1ByteStringB = b . Sha1.unSha1
-      fileModeB (CMode o) = b $ toOctBS o
+      fileModeB = b . toOctBS . fileModeToInt
       nameB = b . encodeUtf8
-      rowB (TreeRow mode name sha1) =
-        fileModeB mode <> nameB name <> sha1ByteStringB sha1
-  objectParser _ = Tree <$> many1 rowP
+      rowB (name, TreeRow mode sha1) =
+        fileModeB mode <> b " " <> nameB name <> b "\NUL"
+        <> sha1ByteStringB sha1
+  objectParser _ = Tree . Map.fromList <$> many' rowP
     where
-      fileModeP = CMode . fromIntegral <$> oct
-      nameP = decodeUtf8 <$> takeTill' (== '\NUL')
-      rowP = TreeRow <$> (fileModeP <* char ' ') <*> nameP <*> sha1ByteStringP
+      rowP = do
+        fileMode <- (oct >>= fileModeFromInt) <* char ' '
+        name <- decodeUtf8 <$> takeTill' (== '\NUL')
+        sha1 <- sha1ByteStringP
+        return (name, TreeRow fileMode sha1)
   wrap = ObjTree
   unwrap (ObjTree t) = return t
   unwrap _ = fail "Incorrect object type"
