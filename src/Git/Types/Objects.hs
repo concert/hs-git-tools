@@ -39,7 +39,7 @@ fileModeToInt fm = case fm of
   GitLink -> 0o160000
 
 fileModeFromInt :: MonadFail m => Int -> m FileMode
-fileModeFromInt i = maybe (fail $ "Bad file mode " ++ show i) return $
+fileModeFromInt i = maybe (fail $ printf "Bad file mode 0o%o" i) return $
   lookup i [(fileModeToInt fm, fm) | fm <- [minBound..]]
 
 data TreeRow = TreeRow
