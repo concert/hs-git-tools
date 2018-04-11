@@ -98,6 +98,7 @@ test-suite hs-git-test
     , bytestring
     , containers
     , mtl
+    , pathtype
     , tagged
     , text
     , time

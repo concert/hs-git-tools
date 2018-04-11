@@ -5,12 +5,12 @@
 
 module Git.Index.Parser where
 
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, replicateM)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
-  (Parser, (<?>), string, endOfInput, many1, satisfy, takeTill)
+  (Parser, (<?>), string, satisfy, takeTill)
 import Data.Bits (Bits, (.&.), shiftR, testBit)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
@@ -29,7 +29,8 @@ import qualified System.Path.Posix as Path
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Serialise (lazyParseOnly, sha1ByteStringP, nullTermStringP)
+import Git.Serialise
+  (lazyParseOnly, sha1ByteStringP, nullTermStringP, tellParsePos)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
   ( Index(..), IndexVersion(..), versionFromWord32
@@ -75,12 +76,13 @@ entryP
   :: IndexVersion -> Path.RelFileDir
   -> Parser ((Path.RelFileDir, Stage), IndexEntry)
 entryP version prevPath = do
+  startPos <- tellParsePos
   gfs <- gfsP
   sha1 <- sha1ByteStringP
   (stage, flags) <- flagsP version
   path <- case version of
         Version4 -> v4PathP prevPath
-        _ -> v2_3PathP
+        _ -> v2_3PathP startPos
   return ((path, stage), IndexEntry gfs sha1 flags)
 
 gfsP :: Parser GitFileStat
@@ -128,9 +130,13 @@ flagsP version = do
            (flag SkipWorkTree $ testBit bits 14)
         <> (flag IntentToAdd $ testBit bits 13)
 
-v2_3PathP :: Parser Path.RelFileDir
-v2_3PathP = fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0)
-  <* many1 (satisfy (== 0))
+v2_3PathP :: Int -> Parser Path.RelFileDir
+v2_3PathP entryStartPos = do
+  path <- fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0)
+  pos <- tellParsePos
+  let requiredPadding = (pos - entryStartPos) `rem` 8
+  _ <- replicateM requiredPadding (satisfy (== 0))
+  return path
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
