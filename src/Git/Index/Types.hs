@@ -35,8 +35,8 @@ versionToWord32 v = case v of
   Version3 -> 3
   Version4 -> 4
 
-versionFromWord32 :: MonadError GitError m => Word32 -> m IndexVersion
-versionFromWord32 w = maybe (throwError UnsupportedIndexVersion) return $
+versionFromWord32 :: MonadFail m => Word32 -> m IndexVersion
+versionFromWord32 w = maybe (fail "Unsupported index version") return $
   lookup w [(versionToWord32 v, v) | v <- [minBound..]]
 
 data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)

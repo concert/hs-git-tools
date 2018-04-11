@@ -44,19 +44,21 @@ openIndex' path = p path >>= openIndex
 
 openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Index
 openIndex path = do
-  h <- liftIO $ openBinaryFile (Path.toString path) ReadMode
-  (headBytes, content) <- liftIO $ LBS.splitAt 12 <$> LBS.hGetContents h
-  (versionNo, numEntries) <- either (throwError . ParseError) return $
-    lazyParseOnly (headerP <* endOfInput) headBytes
-  version <- versionFromWord32 versionNo
-  entries <- either (throwError . ParseError) return $
-    lazyParseOnly (indexEntriesP version numEntries) content
+  content <- liftIO $ openBinaryFile (Path.toString path) ReadMode >>=
+    LBS.hGetContents
+  either (throwError . ParseError) return $
+    lazyParseOnly indexP content
+
+indexP :: Parser Index
+indexP = do
+  (version, numEntries) <- headerP
+  entries <- indexEntriesP version numEntries
   return $ Index version entries
 
-headerP :: Parser (Word32, Word32)
+headerP :: Parser (IndexVersion, Word32)
 headerP = do
   _ <- string "DIRC" <?> "Magic DIRCache header"
-  version <- anyWord32be
+  version <- anyWord32be >>= versionFromWord32
   numEntries <- anyWord32be
   return (version, numEntries)
 
