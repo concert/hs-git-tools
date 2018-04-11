@@ -77,7 +77,7 @@ entryP version prevPath = do
   (stage, flags) <- flagsP version
   path <- case version of
         Version4 -> v4PathP prevPath
-        _ -> v1_3PathP
+        _ -> v2_3PathP
   return ((path, stage), IndexEntry gfs sha1 flags)
 
 gfsP :: Parser GitFileStat
@@ -125,8 +125,9 @@ flagsP version = do
            (flag SkipWorkTree $ testBit bits 14)
         <> (flag IntentToAdd $ testBit bits 13)
 
-v1_3PathP :: Parser Path.RelFileDir
-v1_3PathP = fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0) <* many1 (satisfy (== 0))
+v2_3PathP :: Parser Path.RelFileDir
+v2_3PathP = fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0)
+  <* many1 (satisfy (== 0))
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
