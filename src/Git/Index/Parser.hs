@@ -34,7 +34,7 @@ import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
   ( Index(..), IndexVersion(..), versionFromWord32
   , GitFileStat(..), IndexEntry(..), IndexEntries
-  , Flag(..), Stage)
+  , Flag(..), Stage, intToStage, mapToStages)
 
 
 openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
@@ -63,12 +63,13 @@ headerP = do
   return (version, numEntries)
 
 indexEntriesP :: IndexVersion -> Word32 -> Parser IndexEntries
-indexEntriesP version = fmap momFromList . go (Path.rel "")
+indexEntriesP version numEntries =
+    go (Path.rel "") numEntries >>= mapM mapToStages . momFromList
   where
     go _ 0 = return []
-    go prevPath numEntries = do
+    go prevPath ne = do
       entryData@((path, _), _) <- entryP version prevPath
-      (entryData:) <$> go path (numEntries - 1)
+      (entryData:) <$> go path (ne - 1)
 
 entryP
   :: IndexVersion -> Path.RelFileDir
@@ -110,7 +111,7 @@ flagsP version = do
     let continue = testBit bits 14
     when (continue && version < Version3) $
       fail $ "Extended flags bit unexpectedly set in " ++ show version
-    let stage = fromIntegral $ shiftR bits 12 .&. 0b11
+    stage <- intToStage $ fromIntegral $ shiftR bits 12 .&. 0b11
     -- The name length info only appears to be useful for memory allocation
     -- purposes:
     -- let nameLen = lowMask bits 12  -- Version < 4
