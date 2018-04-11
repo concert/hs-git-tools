@@ -113,6 +113,9 @@ data GitFileStat
   , gfsSize :: Word32  -- System.Posix.Types.FileOffset truncated to 32-bit
   } deriving (Show, Eq)
 
+gitFileStat :: GitFileStat
+gitFileStat = GitFileStat 0 0 (CDev 0) (CIno 0) NonExecFile (CUid 0) (CGid 0) 0
+
 data IndexEntry
   = IndexEntry
   { ieGfs :: GitFileStat
