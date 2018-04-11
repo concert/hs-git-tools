@@ -105,6 +105,7 @@ test-suite hs-git-test
     , QuickCheck
     , quickcheck-instances
   other-modules:
+      Git.Index.ParserSpec
       Git.SerialiseSpec
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec
