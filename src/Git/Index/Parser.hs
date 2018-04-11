@@ -134,8 +134,8 @@ v2_3PathP :: Int -> Parser Path.RelFileDir
 v2_3PathP entryStartPos = do
   path <- fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0)
   pos <- tellParsePos
-  let requiredPadding = (pos - entryStartPos) `rem` 8
-  _ <- replicateM requiredPadding (satisfy (== 0))
+  let requiredPadding = 8 - ((pos - entryStartPos) `rem` 8)
+  _ <- replicateM requiredPadding (satisfy (== 0) <?> "nul padding")
   return path
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
