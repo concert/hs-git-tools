@@ -1,9 +1,8 @@
 module Git.Objects.Commit where
 
-import Data.Attoparsec.Char8
+import Data.Attoparsec.ByteString.Char8
   ( Parser, signed, decimal, char, string, satisfy, takeByteString, many'
   , isDigit, takeTill)
-import Blaze.ByteString.Builder (Builder)
 import qualified Blaze.ByteString.Builder as Builder
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
