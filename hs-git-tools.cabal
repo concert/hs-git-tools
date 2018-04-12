@@ -61,7 +61,6 @@ library
     , Git.Objects.Serialise
     , Git.Objects.Tag
     , Git.Objects.Tree
-    , Git.Objects.Types
     , Git.Pack
     , Git.Pack.Delta
     , Git.Pack.Index

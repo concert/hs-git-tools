@@ -7,4 +7,3 @@ import Git.Objects.Object as X
 import Git.Objects.Serialise as X
 import Git.Objects.Tag as X
 import Git.Objects.Tree as X
-import Git.Objects.Types as X
