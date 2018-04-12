@@ -1,6 +1,5 @@
 {-# LANGUAGE
     BinaryLiterals
-  , FlexibleContexts
   , DeriveFunctor
 #-}
 
