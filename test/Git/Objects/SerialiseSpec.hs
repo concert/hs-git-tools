@@ -24,8 +24,8 @@ import Data.Time
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import Git.Internal (Wrapable(..))
-import Git.Objects
-  (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..), Object)
+import Git.Types (FileMode(..))
+import Git.Objects (Commit(..), Blob(..), Tree(..), TreeRow(..), Object)
 import Git.Objects.Serialise
   ( tellParsePos
   , decodeObject, encodeObject

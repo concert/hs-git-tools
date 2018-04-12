@@ -46,11 +46,12 @@ import Text.Printf (printf)
 
 import Git.Internal (Wrapable(..))
 import Git.Sha1 (Sha1)
+import Git.Types (fileModeFromInt, fileModeToInt)
 import qualified Git.Sha1 as Sha1
 import Git.Objects.Object (Object(..))
 import Git.Objects.Types
   (Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
-  , fileModeFromInt, fileModeToInt, ObjectType(..))
+  , ObjectType(..))
 
 encodeObjectType :: IsString str => ObjectType -> str
 encodeObjectType objTy = case objTy of
