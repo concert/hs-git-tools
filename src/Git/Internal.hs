@@ -4,7 +4,7 @@
   , FlexibleContexts
 #-}
 
-module Git.Types.Internal where
+module Git.Internal where
 
 import Prelude hiding (fail)
 import Control.Monad.Fail (MonadFail(..))

@@ -13,9 +13,9 @@ import Data.String (IsString)
 import qualified Data.Text as Text
 import Data.Word
 
+import Git.Internal ()
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
-import Git.Types.Internal ()
 
 instance Arbitrary Sha1 where
   arbitrary = Sha1.unsafeSha1 . BS.pack <$>

@@ -15,10 +15,10 @@ import Data.Word
 import System.Directory (listDirectory)
 import System.FilePath.Posix ((</>))
 
+import Git.Internal (replaceSuffix, liftEitherGitError)
 import Git.Objects (ObjectType)
 import Git.Sha1 (Sha1)
 import Git.Types (GitError)
-import Git.Types.Internal (replaceSuffix, liftEitherGitError)
 
 import Git.Pack.Index
   (PackIndexState, openPackIndex, getPackRecordOffset)

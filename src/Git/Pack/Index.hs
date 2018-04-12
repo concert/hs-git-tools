@@ -16,10 +16,10 @@ import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
-import Git.Sha1 (Sha1(..), sha1Size)
-import Git.Types.Internal
+import Git.Internal
   ( MmapHandle, MmapFrom(..), MmapTo(..), mmapData
   , mmapWord32be, mmapWord64be, mmapSha1)
+import Git.Sha1 (Sha1(..), sha1Size)
 import Git.Types (GitError(..))
 
 data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)

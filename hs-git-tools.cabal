@@ -48,6 +48,7 @@ library
     , zlib
   exposed-modules:
       Git
+    , Git.Internal
     , Git.Objects
     , Git.Objects.Serialise
     , Git.Objects.Types
@@ -62,7 +63,6 @@ library
     , Git.Store
     , Git.Types
     , Git.Types.Error
-    , Git.Types.Internal
   other-modules:
       Paths_hs_git_tools
   default-language: Haskell2010

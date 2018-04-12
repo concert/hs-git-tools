@@ -23,14 +23,14 @@ import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
+import Git.Internal
+  (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
 import Git.Objects (ObjectType(..))
 -- FIXME: tellParsePos, lazyParseOnly should live somewhere more general
 import Git.Objects.Serialise (tellParsePos, lazyParseOnly)
 import Git.Sha1 (Sha1, sha1Size)
 import qualified Git.Sha1 as Sha1
 import Git.Types (GitError(..))
-import Git.Types.Internal
-  (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
 
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
 

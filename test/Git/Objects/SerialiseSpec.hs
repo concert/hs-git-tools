@@ -20,6 +20,7 @@ import Data.Time
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
+import Git.Internal ()
 import Git.Objects (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
 import Git.Objects.Serialise
   ( tellParsePos
@@ -28,7 +29,6 @@ import Git.Objects.Serialise
   , GitObject(objectType, unwrap), encodeObjectType)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
-import Git.Types.Internal ()
 
 import Git.Sha1Spec ()
 
