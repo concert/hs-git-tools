@@ -5,7 +5,11 @@
 module Git.Objects.Object where
 
 import Git.Internal (Wrapable(..))
-import Git.Objects.Types (Blob, Commit, Tag, Tree, ObjectType(..))
+import Git.Objects.Blob (Blob)
+import Git.Objects.Commit (Commit)
+import Git.Objects.GitObject (ObjectType(..))
+import Git.Objects.Tag (Tag)
+import Git.Objects.Tree (Tree)
 
 
 data Object

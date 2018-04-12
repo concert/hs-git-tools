@@ -5,12 +5,14 @@ module Git.Sha1
   , toHexString, fromHexString
   , toHexText, fromHexText
   , hashStrict, hashLazy
+  , sha1ByteStringParser, sha1HexParser
   ) where
 
-import Prelude hiding (fail)
+import Prelude hiding (fail, take)
 
 import Control.Monad.Fail (MonadFail(..))
 import qualified Crypto.Hash.SHA1 as SHA1
+import Data.Attoparsec.ByteString (Parser, take)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as Char8
@@ -61,3 +63,9 @@ hashStrict = hashLazy . LBS.fromStrict
 
 hashLazy :: LBS.ByteString -> Sha1
 hashLazy = Sha1 . SHA1.hashlazy
+
+sha1ByteStringParser :: Parser Sha1
+sha1ByteStringParser = take sha1Size >>= fromByteString
+
+sha1HexParser :: Parser Sha1
+sha1HexParser = take sha1HexSize >>= fromHexByteString

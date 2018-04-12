@@ -54,8 +54,13 @@ library
       Git
     , Git.Internal
     , Git.Objects
+    , Git.Objects.Blob
+    , Git.Objects.Commit
+    , Git.Objects.GitObject
     , Git.Objects.Object
     , Git.Objects.Serialise
+    , Git.Objects.Tag
+    , Git.Objects.Tree
     , Git.Objects.Types
     , Git.Pack
     , Git.Pack.Delta

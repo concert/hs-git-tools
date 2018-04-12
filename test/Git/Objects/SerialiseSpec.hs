@@ -23,14 +23,15 @@ import Data.Time
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
-import Git.Internal (Wrapable(..))
+import Git.Internal (Wrapable(..), tellParsePos)
 import Git.Types (FileMode(..))
-import Git.Objects (Commit(..), Blob(..), Tree(..), TreeRow(..), Object)
+import Git.Objects
+  (GitObject(gitObjectType), Object
+  , Commit(..), Blob(..), Tree(..), TreeRow(..))
 import Git.Objects.Serialise
-  ( tellParsePos
-  , decodeObject, encodeObject
+  ( decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
-  , GitObject(objectType), encodeObjectType)
+  , encodeObjectType)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 
@@ -57,7 +58,7 @@ spec = describe "Serialise" $ do
       :: forall a. (Wrapable Object a, GitObject a, Show a, Eq a, Arbitrary a)
       => TestObject a -> Spec
     checkEncoding (TestObject objSha1 looseHeader bytes obj) =
-      let tyName = encodeObjectType $ objectType $ Proxy @a in
+      let tyName = encodeObjectType $ gitObjectType $ Proxy @a in
       describe (tyName ++ " encoding") $ do
         it ("should decode a real " ++ tyName) $
           (decodeObject bytes :: Either String a) `shouldBe` Right obj

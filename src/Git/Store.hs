@@ -14,9 +14,8 @@ import System.IO (openBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
 
 import Git.Internal (Wrapable(..))
-import Git.Objects (Object)
-import Git.Objects.Serialise
-  ( GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
+import Git.Objects
+  (GitObject(..), Object, decodeObject, encodeLooseObject, decodeLooseObject)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 import Git.Pack (withPackSet, packSetGetObjectData)
@@ -51,5 +50,5 @@ retrieveObject repo sha1 = do
     readFromPack = do
       (objTy, sbs) <- withPackSet (storePath </> "pack") $
         packSetGetObjectData $ unTagged sha1
-      unless (objTy == objectType (Proxy @a)) $ error "Bad object type"
+      unless (objTy == gitObjectType (Proxy @a)) $ error "Bad object type"
       decodeObject sbs
