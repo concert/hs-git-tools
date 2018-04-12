@@ -25,7 +25,7 @@ import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
 import System.IO (openBinaryFile, IOMode(..))
-import qualified System.Path.Posix as Path
+import qualified System.Path as Path
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
