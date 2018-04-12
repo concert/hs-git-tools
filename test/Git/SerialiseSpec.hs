@@ -25,12 +25,12 @@ import Git.Serialise
   , decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
   , GitObject(objectType, unwrap), encodeObjectType)
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 import Git.Types (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
 import Git.Types.Internal ()
-import Git.Types.Sha1 (Sha1)
-import qualified Git.Types.Sha1 as Sha1
 
-import Git.Types.Sha1Spec ()
+import Git.Sha1Spec ()
 
 deriving instance Eq ZonedTime
 deriving instance Eq Commit

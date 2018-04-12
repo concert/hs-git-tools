@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Git.Types.Sha1Spec where
+module Git.Sha1Spec where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -13,8 +13,8 @@ import Data.String (IsString)
 import qualified Data.Text as Text
 import Data.Word
 
-import Git.Types.Sha1 (Sha1)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 import Git.Types.Internal ()
 
 instance Arbitrary Sha1 where

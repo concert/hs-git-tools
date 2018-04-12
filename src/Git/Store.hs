@@ -15,7 +15,8 @@ import System.IO.Error (isDoesNotExistError)
 
 import Git.Serialise
   ( GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
-import Git.Types (Sha1, toHexString)
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 import Git.Pack (withPackSet, packSetGetObjectData)
 import Git.Repository (Repo, repoObjectsPath)
 
@@ -24,7 +25,7 @@ storeObject :: GitObject a => Repo -> a -> IO (Tagged a Sha1)
 storeObject repo obj =
   let
     (sha1, encoded) = encodeLooseObject obj
-    (sha1Head, filename) = splitAt 2 $ toHexString $ unTagged sha1
+    (sha1Head, filename) = splitAt 2 $ Sha1.toHexString $ unTagged sha1
     dirPath = repoObjectsPath repo </> sha1Head
   in do
     createDirectoryIfMissing True dirPath
@@ -40,7 +41,7 @@ retrieveObject repo sha1 = do
     Left e -> if isDoesNotExistError e then readFromPack else throwIO e
   where
     storePath = repoObjectsPath repo
-    (sha1Head, filename) = splitAt 2 $ toHexString $ unTagged sha1
+    (sha1Head, filename) = splitAt 2 $ Sha1.toHexString $ unTagged sha1
     readDirectly = openBinaryFile (storePath </> sha1Head </> filename) ReadMode
         >>= LBS.hGetContents >>= decodeLooseObject . decompress
     readFromPack :: IO a

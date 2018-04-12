@@ -40,10 +40,11 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Word
 import Text.Printf (printf)
 
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 import Git.Types
-  (Sha1, Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
+  (Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
   , fileModeFromInt, fileModeToInt, ObjectType(..), Object(..))
-import qualified Git.Types.Sha1 as Sha1
 
 encodeObjectType :: IsString str => ObjectType -> str
 encodeObjectType objTy = case objTy of

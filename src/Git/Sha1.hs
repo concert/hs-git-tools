@@ -1,4 +1,4 @@
-module Git.Types.Sha1
+module Git.Sha1
   ( Sha1, unsafeSha1, unSha1, sha1Size, fromByteString
   , sha1HexSize
   , toHexByteString, fromHexByteString

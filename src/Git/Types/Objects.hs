@@ -11,7 +11,7 @@ import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Text.Printf (printf)
 
-import Git.Types.Sha1 (Sha1)
+import Git.Sha1 (Sha1)
 
 data Blob = Blob {blobData :: BS.ByteString} deriving Eq
 

@@ -17,9 +17,10 @@ import System.IO.Error (isDoesNotExistError)
 
 import Git.Repository (Repo, repoRefsPath, repoHeadPath)
 import Git.Serialise (sha1HexParser)
-import Git.Types (Sha1, Commit)
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
+import Git.Types (Commit)
 import Git.Types.Internal ()
-import qualified Git.Types.Sha1 as Sha1
 
 
 class Sha1Pointer a where

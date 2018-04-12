@@ -18,8 +18,8 @@ import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 
 import Git.Types.Error (GitError(..))
-import Git.Types.Sha1 (Sha1)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 
 instance MonadFail (Either String) where
   fail = Left
