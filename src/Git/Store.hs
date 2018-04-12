@@ -13,7 +13,7 @@ import System.FilePath.Posix ((</>))
 import System.IO (openBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
 
-import Git.Serialise
+import Git.Objects.Serialise
   ( GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1

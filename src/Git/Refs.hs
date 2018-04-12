@@ -16,8 +16,9 @@ import System.IO (withBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
 
 import Git.Objects (Commit)
+-- FIXME: sha1HexParser should probably live nearer Git.Sha1...
+import Git.Objects.Serialise (sha1HexParser)
 import Git.Repository (Repo, repoRefsPath, repoHeadPath)
-import Git.Serialise (sha1HexParser)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 import Git.Types.Internal ()

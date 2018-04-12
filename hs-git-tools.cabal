@@ -49,6 +49,7 @@ library
   exposed-modules:
       Git
     , Git.Objects
+    , Git.Objects.Serialise
     , Git.Objects.Types
     , Git.Pack
     , Git.Pack.Delta
@@ -57,7 +58,6 @@ library
     , Git.Pack.PackSet
     , Git.Refs
     , Git.Repository
-    , Git.Serialise
     , Git.Sha1
     , Git.Store
     , Git.Types
@@ -102,7 +102,7 @@ test-suite hs-git-test
     , QuickCheck
     , quickcheck-instances
   other-modules:
-      Git.SerialiseSpec
+      Git.Objects.SerialiseSpec
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec
       Git.Sha1Spec

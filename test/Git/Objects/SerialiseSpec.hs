@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Git.SerialiseSpec where
+module Git.Objects.SerialiseSpec where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -21,7 +21,7 @@ import Data.Time
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import Git.Objects (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
-import Git.Serialise
+import Git.Objects.Serialise
   ( tellParsePos
   , decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject

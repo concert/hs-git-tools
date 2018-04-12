@@ -1,4 +1,4 @@
-module Git.Serialise
+module Git.Objects.Serialise
   ( encodeLooseObject, encodeObject
   , decodeLooseObject, decodeObject
   , GitObject, objectType, wrap, unwrap
