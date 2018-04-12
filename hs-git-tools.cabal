@@ -50,6 +50,7 @@ library
       Git
     , Git.Internal
     , Git.Objects
+    , Git.Objects.Object
     , Git.Objects.Serialise
     , Git.Objects.Types
     , Git.Pack

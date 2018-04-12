@@ -47,9 +47,10 @@ import Text.Printf (printf)
 import Git.Internal (Wrapable(..))
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
+import Git.Objects.Object (Object(..))
 import Git.Objects.Types
   (Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
-  , fileModeFromInt, fileModeToInt, ObjectType(..), Object(..))
+  , fileModeFromInt, fileModeToInt, ObjectType(..))
 
 encodeObjectType :: IsString str => ObjectType -> str
 encodeObjectType objTy = case objTy of
@@ -108,11 +109,6 @@ instance GitObject Blob where
   encodeObject = blobData
   objectParser size = Blob . BS.take (fromIntegral size) <$> takeByteString
 
-instance Wrapable Object Blob where
-  wrap = ObjBlob
-  unwrap (ObjBlob blob) = return blob
-  unwrap _ = fail "Incorrect object type"
-
 sha1ByteStringP :: Parser Sha1
 sha1ByteStringP = take 20 >>= Sha1.fromByteString
 
@@ -134,11 +130,6 @@ instance GitObject Tree where
         name <- decodeUtf8 <$> takeTill' (== '\NUL')
         sha1 <- sha1ByteStringP
         return (name, TreeRow fileMode sha1)
-
-instance Wrapable Object Tree where
-  wrap = ObjTree
-  unwrap (ObjTree t) = return t
-  unwrap _ = fail "Incorrect object type"
 
 
 instance GitObject Commit where
@@ -208,20 +199,10 @@ instance GitObject Commit where
         char_ '\n'
         return (name, email, posixTime, tz)
 
-instance Wrapable Object Commit where
-  wrap = ObjCommit
-  unwrap (ObjCommit c) = return c
-  unwrap _ = fail "Incorrect object type"
-
 instance GitObject Tag where
   objectType _ = ObjTyTag
   encodeObject = undefined
   objectParser = undefined
-
-instance Wrapable Object Tag where
-  wrap = ObjTag
-  unwrap (ObjTag t) = return t
-  unwrap _ = fail "Incorrect object type"
 
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
 lazyParseOnly p bs = case parse p bs of

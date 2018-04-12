@@ -73,16 +73,3 @@ data Tag = Tag
 data ObjectType =
   ObjTyBlob | ObjTyTree | ObjTyCommit | ObjTyTag
   deriving (Show, Eq, Enum, Bounded)
-
-data Object
-  = ObjBlob Blob
-  | ObjTree Tree
-  | ObjCommit Commit
-  | ObjTag Tag
-
-objectType :: Object -> ObjectType
-objectType obj = case obj of
-  ObjBlob _ -> ObjTyBlob
-  ObjTree _ -> ObjTyTree
-  ObjCommit _ -> ObjTyCommit
-  ObjTag _ -> ObjTyTag
