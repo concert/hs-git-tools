@@ -21,7 +21,7 @@ import System.Posix.Files
   , statusChangeTimeHiRes, modificationTimeHiRes)
 import System.Posix.Types
   ( CDev(..), DeviceID, CIno(..), FileID, CUid(..), UserID, CGid(..), GroupID
-  , FileOffset, CMode(..))
+  , CMode(..))
 import Text.Printf (printf)
 
 import Git.Types (Sha1, FileMode(..), fileModeFromInt)
@@ -129,11 +129,7 @@ gfsFromStat fs = do
       (statusChangeTimeHiRes fs) (modificationTimeHiRes fs)
       (deviceID fs) (fileID fs) fm
       (fileOwner fs) (fileGroup fs)
-      (boundSize $ fileSize fs)
-  where
-    boundSize :: FileOffset -> Word32
-    boundSize fo | fo <= fromIntegral (maxBound @Word32) = fromIntegral fo
-                 | otherwise = maxBound
+      (fromIntegral $ fileSize fs)
 
 -- | Heuristically convert some unsupported file modes into
 --   supported ones, failing if there's no way to accomodate the file type.
