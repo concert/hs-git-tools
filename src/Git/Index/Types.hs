@@ -61,9 +61,9 @@ intToStage i = maybe (fail $ printf "Bad stage value %d" i) return $
 data Stages a
   = Normal a
   | BothAdded {ssHead :: a, ssIncoming :: a}
-  | BothEdited {ssBass :: a, ssHead :: a, ssIncoming :: a}
-  | RmEdited {ssBass :: a, ssIncoming :: a}
-  | EditedRm {ssBass :: a, ssHead :: a}
+  | BothEdited {ssBase :: a, ssHead :: a, ssIncoming :: a}
+  | RmEdited {ssBase :: a, ssIncoming :: a}
+  | EditedRm {ssBase :: a, ssHead :: a}
   deriving (Show, Functor)
 
 stagesToMap :: Stages a -> Map Stage a
