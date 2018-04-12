@@ -1,3 +1,7 @@
+{-# LANGUAGE
+    MultiParamTypeClasses
+#-}
+
 module Git.Objects.Serialise
   ( encodeLooseObject, encodeObject
   , decodeLooseObject, decodeObject
@@ -40,6 +44,7 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Word
 import Text.Printf (printf)
 
+import Git.Internal (Wrapable(..))
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 import Git.Objects.Types
@@ -98,13 +103,12 @@ class GitObject a where
   encodeObject :: a -> BS.ByteString
   objectParser :: Word64 -> Parser a
 
-  wrap :: a -> Object
-  unwrap :: MonadFail m => Object -> m a
-
 instance GitObject Blob where
   objectType _ = ObjTyBlob
   encodeObject = blobData
   objectParser size = Blob . BS.take (fromIntegral size) <$> takeByteString
+
+instance Wrapable Object Blob where
   wrap = ObjBlob
   unwrap (ObjBlob blob) = return blob
   unwrap _ = fail "Incorrect object type"
@@ -130,6 +134,8 @@ instance GitObject Tree where
         name <- decodeUtf8 <$> takeTill' (== '\NUL')
         sha1 <- sha1ByteStringP
         return (name, TreeRow fileMode sha1)
+
+instance Wrapable Object Tree where
   wrap = ObjTree
   unwrap (ObjTree t) = return t
   unwrap _ = fail "Incorrect object type"
@@ -201,6 +207,8 @@ instance GitObject Commit where
         tz <- minutesToTimeZone <$> signed tzMinutes
         char_ '\n'
         return (name, email, posixTime, tz)
+
+instance Wrapable Object Commit where
   wrap = ObjCommit
   unwrap (ObjCommit c) = return c
   unwrap _ = fail "Incorrect object type"
@@ -209,6 +217,8 @@ instance GitObject Tag where
   objectType _ = ObjTyTag
   encodeObject = undefined
   objectParser = undefined
+
+instance Wrapable Object Tag where
   wrap = ObjTag
   unwrap (ObjTag t) = return t
   unwrap _ = fail "Incorrect object type"

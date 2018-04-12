@@ -1,5 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , StandaloneDeriving
+#-}
 
 module Git.Objects.SerialiseSpec where
 
@@ -20,13 +23,14 @@ import Data.Time
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
-import Git.Internal ()
-import Git.Objects (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
+import Git.Internal (Wrapable(..))
+import Git.Objects
+  (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..), Object)
 import Git.Objects.Serialise
   ( tellParsePos
   , decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
-  , GitObject(objectType, unwrap), encodeObjectType)
+  , GitObject(objectType), encodeObjectType)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 
@@ -50,7 +54,7 @@ spec = describe "Serialise" $ do
     checkEncoding blob_527d8d43
   where
     checkEncoding
-      :: forall a. (GitObject a, Show a, Eq a, Arbitrary a)
+      :: forall a. (Wrapable Object a, GitObject a, Show a, Eq a, Arbitrary a)
       => TestObject a -> Spec
     checkEncoding (TestObject objSha1 looseHeader bytes obj) =
       let tyName = encodeObjectType $ objectType $ Proxy @a in

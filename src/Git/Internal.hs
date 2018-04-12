@@ -2,6 +2,7 @@
 {-# LANGUAGE
     FlexibleInstances
   , FlexibleContexts
+  , MultiParamTypeClasses
 #-}
 
 module Git.Internal where
@@ -87,3 +88,7 @@ mmapWord64be h from = either error id $ parseOnly anyWord64be $
 mmapSha1 :: MmapHandle -> MmapFrom -> Sha1
 mmapSha1 h from = either error id $ Sha1.fromByteString $
   mmapData h from (Length 20)
+
+class Wrapable w a where
+  wrap :: a -> w
+  unwrap :: MonadFail m => w -> m a

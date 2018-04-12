@@ -13,6 +13,8 @@ import System.FilePath.Posix ((</>))
 import System.IO (openBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
 
+import Git.Internal (Wrapable(..))
+import Git.Objects (Object)
 import Git.Objects.Serialise
   ( GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
 import Git.Sha1 (Sha1)
@@ -33,7 +35,8 @@ storeObject repo obj =
     LBS.hPut handle $ compress $ LBS.fromStrict $ encoded
     return sha1
 
-retrieveObject :: forall a. GitObject a => Repo -> Tagged a Sha1 -> IO a
+retrieveObject
+  :: forall a. (Wrapable Object a, GitObject a) => Repo -> Tagged a Sha1 -> IO a
 retrieveObject repo sha1 = do
   eOrObj <- try $ readDirectly >>= unwrap
   case eOrObj of
