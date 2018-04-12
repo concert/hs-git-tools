@@ -41,7 +41,7 @@ import Git.Index.Types
 openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
 openIndex' path = p path >>= openIndex
   where
-    p = either fail return . Path.parse
+    p = either (throwError . ParseError) return . Path.parse
 
 openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Index
 openIndex path = do
