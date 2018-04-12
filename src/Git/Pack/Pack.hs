@@ -23,10 +23,11 @@ import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
+import Git.Objects (ObjectType(..))
 import Git.Serialise (tellParsePos)
 import Git.Sha1 (Sha1, sha1Size)
 import qualified Git.Sha1 as Sha1
-import Git.Types (GitError(..), ObjectType(..))
+import Git.Types (GitError(..))
 import Git.Types.Internal
   (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
 

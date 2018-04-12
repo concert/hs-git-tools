@@ -48,6 +48,8 @@ library
     , zlib
   exposed-modules:
       Git
+    , Git.Objects
+    , Git.Objects.Types
     , Git.Pack
     , Git.Pack.Delta
     , Git.Pack.Index
@@ -61,7 +63,6 @@ library
     , Git.Types
     , Git.Types.Error
     , Git.Types.Internal
-    , Git.Types.Objects
     , Lib
   other-modules:
       Paths_hs_git_tools

@@ -15,8 +15,9 @@ import Data.Word
 import System.Directory (listDirectory)
 import System.FilePath.Posix ((</>))
 
+import Git.Objects (ObjectType)
 import Git.Sha1 (Sha1)
-import Git.Types (GitError, ObjectType)
+import Git.Types (GitError)
 import Git.Types.Internal (replaceSuffix, liftEitherGitError)
 
 import Git.Pack.Index

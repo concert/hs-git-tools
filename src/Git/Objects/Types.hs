@@ -1,4 +1,4 @@
-module Git.Types.Objects where
+module Git.Objects.Types where
 
 import Prelude hiding (fail)
 

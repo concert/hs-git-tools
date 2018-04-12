@@ -42,7 +42,7 @@ import Text.Printf (printf)
 
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
-import Git.Types
+import Git.Objects.Types
   (Blob(..), Tree(..), TreeRow(..), Commit(..), Tag(..), toZonedTime
   , fileModeFromInt, fileModeToInt, ObjectType(..), Object(..))
 
