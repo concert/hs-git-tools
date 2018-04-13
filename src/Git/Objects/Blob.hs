@@ -7,7 +7,7 @@ import Text.Printf (printf)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
 
 
-data Blob = Blob {blobData :: BS.ByteString} deriving Eq
+data Blob = Blob {blobData :: BS.ByteString}
 
 instance Show Blob where
   show = printf "<blob: %d>" . BS.length . blobData

@@ -5,7 +5,7 @@
 
 module Git.Index.Parser where
 
-import Control.Monad (unless, when, replicateM)
+import Control.Monad (unless, when, replicateM_)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
@@ -43,7 +43,7 @@ openIndex' path = p path >>= openIndex
   where
     p = either (throwError . ParseError) return . Path.parse
 
-openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Index
+openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
 openIndex path = do
   content <- liftIO $ openBinaryFile (Path.toString path) ReadMode >>=
     LBS.hGetContents
@@ -76,14 +76,19 @@ entryP
   :: IndexVersion -> Path.RelFileDir
   -> Parser ((Path.RelFileDir, Stage), IndexEntry)
 entryP version prevPath = do
-  startPos <- tellParsePos
-  gfs <- gfsP
-  sha1 <- sha1ByteStringParser
-  (stage, flags) <- flagsP version
-  path <- case version of
-        Version4 -> v4PathP prevPath
-        _ -> v2_3PathP startPos
-  return ((path, stage), IndexEntry gfs sha1 flags)
+    startPos <- tellParsePos
+    gfs <- gfsP
+    sha1 <- sha1ByteStringParser
+    (stage, flags) <- flagsP version
+    path <- case version of
+          Version4 -> v4PathP prevPath
+          _ -> v2_3PathP <* padding startPos
+    return ((path, stage), IndexEntry gfs sha1 flags)
+  where
+    padding startPos = do
+      pos <- tellParsePos
+      let requiredPadding = 8 - ((pos - startPos) `rem` 8)
+      replicateM_ requiredPadding (satisfy (== 0) <?> "nul padding")
 
 gfsP :: Parser GitFileStat
 gfsP = do
@@ -130,13 +135,8 @@ flagsP version = do
            (flag SkipWorkTree $ testBit bits 14)
         <> (flag IntentToAdd $ testBit bits 13)
 
-v2_3PathP :: Int -> Parser Path.RelFileDir
-v2_3PathP entryStartPos = do
-  path <- fmap (Path.rel . Text.unpack . decodeUtf8) $ takeTill (== 0)
-  pos <- tellParsePos
-  let requiredPadding = 8 - ((pos - entryStartPos) `rem` 8)
-  _ <- replicateM requiredPadding (satisfy (== 0) <?> "nul padding")
-  return path
+v2_3PathP :: Parser Path.RelFileDir
+v2_3PathP = Path.rel . Text.unpack . decodeUtf8 <$> takeTill (== 0)
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
