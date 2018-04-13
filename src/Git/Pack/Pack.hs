@@ -21,6 +21,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
 import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
+import qualified System.Path as Path
 import Text.Printf (printf)
 
 import Git.Internal
@@ -60,9 +61,10 @@ data PackHandle = PackHandle
   , phNumObjects :: Word32
   } deriving (Show)
 
-openPackFile :: (MonadIO m, MonadError GitError m) => FilePath -> m PackHandle
+openPackFile
+  :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m PackHandle
 openPackFile path = do
-    h <- liftIO $ mmapFileForeignPtr path ReadOnly Nothing
+    h <- liftIO $ mmapFileForeignPtr (Path.toString path) ReadOnly Nothing
     (version, numObjects) <- either (throwError . ParseError) return $
         parseOnly headerP $ mmapData h (FromStart 0) (Length 12)
     unless (version == 2) $ throwError UnsupportedPackFileVersion

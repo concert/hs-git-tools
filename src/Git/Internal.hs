@@ -53,12 +53,6 @@ firstSuccess f as = ExceptT $ go (fmap (\a -> (a, f a)) as) []
     go ((a, exT):aexTs) aes = runExceptT exT >>=
       either (go aexTs . (: aes) . (a,)) (return . Right . (a,))
 
-replaceSuffix :: (Eq a, MonadFail m) => [a] -> [a] -> [a] -> m [a]
-replaceSuffix old new s = do
-  delta <- dropLengthMaybe old s
-  let (prefix, old') = splitLength delta s
-  if old' == old then return $ prefix ++ new else fail "suffix did not match"
-
 splitLength :: [a] -> [b] -> ([b], [b])
 splitLength as bs = first reverse $ go [] as bs
   where
