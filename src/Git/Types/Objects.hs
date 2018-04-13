@@ -13,7 +13,7 @@ import Text.Printf (printf)
 
 import Git.Types.Sha1 (Sha1)
 
-data Blob = Blob {blobData :: BS.ByteString} deriving Eq
+data Blob = Blob {blobData :: BS.ByteString}
 
 instance Show Blob where
   show = printf "<blob: %d>" . BS.length . blobData

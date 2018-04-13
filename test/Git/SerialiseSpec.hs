@@ -34,6 +34,7 @@ import Git.Types.Sha1Spec ()
 
 deriving instance Eq ZonedTime
 deriving instance Eq Commit
+deriving instance Eq Blob
 
 spec :: Spec
 spec = describe "Serialise" $ do
