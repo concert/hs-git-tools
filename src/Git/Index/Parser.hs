@@ -43,7 +43,7 @@ openIndex' path = p path >>= openIndex
   where
     p = either (throwError . ParseError) return . Path.parse
 
-openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Index
+openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
 openIndex path = do
   content <- liftIO $ openBinaryFile (Path.toString path) ReadMode >>=
     LBS.hGetContents
