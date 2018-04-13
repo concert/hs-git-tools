@@ -8,7 +8,8 @@ import qualified Data.ByteString as BS
 import Data.Word
 import Text.Printf (printf)
 
-import Git.Types (ObjectType, GitError(..))
+import Git.Objects (ObjectType)
+import Git.Types (GitError(..))
 
 data DeltaInstruction
   = Insert {insData :: BS.ByteString}

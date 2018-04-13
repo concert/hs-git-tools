@@ -24,7 +24,8 @@ import System.Posix.Types
   , CMode(..))
 import Text.Printf (printf)
 
-import Git.Types (Sha1, FileMode(..), fileModeFromInt)
+import Git.Types (FileMode(..), fileModeFromInt)
+import Git.Sha1 (Sha1)
 
 
 data IndexVersion =

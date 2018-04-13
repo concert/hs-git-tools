@@ -29,8 +29,8 @@ import qualified System.Path as Path
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Serialise
-  (lazyParseOnly, sha1ByteStringP, nullTermStringP, tellParsePos)
+import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
+import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
   ( Index(..), IndexVersion(..), versionFromWord32
@@ -78,7 +78,7 @@ entryP
 entryP version prevPath = do
   startPos <- tellParsePos
   gfs <- gfsP
-  sha1 <- sha1ByteStringP
+  sha1 <- sha1ByteStringParser
   (stage, flags) <- flagsP version
   path <- case version of
         Version4 -> v4PathP prevPath

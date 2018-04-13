@@ -5,7 +5,8 @@ import Test.Hspec
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Identity (runIdentity)
 
-import Git.Types (GitError(..), ObjectType(..))
+import Git.Objects (ObjectType(..))
+import Git.Types (GitError(..))
 import Git.Pack.Delta
   ( DeltaInstruction(..), DeltaBody(..), deltaBodyOk, applyDelta
   , PackObjectChain(..), renderPackObjectChain)

@@ -15,11 +15,11 @@ import System.Directory (listDirectory)
 import System.IO (withBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
 
+import Git.Internal ()
+import Git.Objects (Commit)
 import Git.Repository (Repo, repoRefsPath, repoHeadPath)
-import Git.Serialise (sha1HexParser)
-import Git.Types (Sha1, Commit)
-import Git.Types.Internal ()
-import qualified Git.Types.Sha1 as Sha1
+import Git.Sha1 (Sha1, sha1HexParser)
+import qualified Git.Sha1 as Sha1
 
 
 class Sha1Pointer a where

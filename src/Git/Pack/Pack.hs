@@ -23,13 +23,14 @@ import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
-import Git.Serialise (tellParsePos)
-import Git.Types (Sha1, sha1Size, GitError(..), ObjectType(..))
-import Git.Types.Internal
-  (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Internal
+  ( MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1
+  , tellParsePos, lazyParseOnly)
+import Git.Objects (ObjectType(..))
+import Git.Sha1 (Sha1, sha1Size)
+import qualified Git.Sha1 as Sha1
+import Git.Types (GitError(..))
 
-import Git.Serialise (lazyParseOnly)
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
 
 data PackObjectType
