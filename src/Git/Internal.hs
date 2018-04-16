@@ -2,24 +2,34 @@
 {-# LANGUAGE
     FlexibleInstances
   , FlexibleContexts
+  , MultiParamTypeClasses
 #-}
 
-module Git.Types.Internal where
+module Git.Internal where
 
 import Prelude hiding (fail)
+
+import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Except (ExceptT(..), MonadError, throwError, runExceptT)
-import Data.Attoparsec.ByteString (parseOnly)
+import Data.Attoparsec.ByteString (Parser, parseOnly, anyWord8)
+import Data.Attoparsec.ByteString.Char8 (char, anyChar, takeTill)
+import Data.Attoparsec.ByteString.Lazy (Result(..), parse)
 import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
+import qualified Data.Attoparsec.Internal.Types as ApIntern
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSIntern
+import qualified Data.ByteString.Lazy as LBS
+import Data.List (intercalate)
+import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
+import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 
 import Git.Types.Error (GitError(..))
-import Git.Types.Sha1 (Sha1)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 
 instance MonadFail (Either String) where
   fail = Left
@@ -87,3 +97,29 @@ mmapWord64be h from = either error id $ parseOnly anyWord64be $
 mmapSha1 :: MmapHandle -> MmapFrom -> Sha1
 mmapSha1 h from = either error id $ Sha1.fromByteString $
   mmapData h from (Length 20)
+
+class Wrapable w a where
+  wrap :: a -> w
+  unwrap :: MonadFail m => w -> m a
+
+lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
+lazyParseOnly p bs = case parse p bs of
+    Fail _ [] err -> fail err
+    Fail _ ctxs err -> fail $ intercalate " > " ctxs ++ ": " ++ err
+    Done _ r -> return r
+
+tellParsePos :: Parser Int
+tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
+  success t pos more (ApIntern.fromPos pos)
+
+takeTill' :: (Char -> Bool) -> Parser BS.ByteString
+takeTill' p = takeTill p <* anyWord8
+
+char_ :: Char -> Parser ()
+char_ = void . char
+
+satisfyMap :: String -> (Char -> Maybe a) -> Parser a
+satisfyMap errStr f = anyChar >>= maybe (fail errStr) return . f
+
+toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
+toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
