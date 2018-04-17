@@ -24,13 +24,13 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
-import System.IO (openBinaryFile, IOMode(..))
 import qualified System.Path as Path
+import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Serialise
-  (lazyParseOnly, sha1ByteStringP, nullTermStringP, tellParsePos)
+import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
+import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
   ( Index(..), IndexVersion(..), versionFromWord32
@@ -45,7 +45,7 @@ openIndex' path = p path >>= openIndex
 
 openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
 openIndex path = do
-  content <- liftIO $ openBinaryFile (Path.toString path) ReadMode >>=
+  content <- liftIO $ openBinaryFile path ReadMode >>=
     LBS.hGetContents
   either (throwError . ParseError) return $
     lazyParseOnly indexP content
@@ -78,7 +78,7 @@ entryP
 entryP version prevPath = do
     startPos <- tellParsePos
     gfs <- gfsP
-    sha1 <- sha1ByteStringP
+    sha1 <- sha1ByteStringParser
     (stage, flags) <- flagsP version
     path <- case version of
           Version4 -> v4PathP prevPath

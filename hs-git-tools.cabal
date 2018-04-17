@@ -23,8 +23,12 @@ library
   hs-source-dirs:
       src
   ghc-options:
-      -Wall -XOverloadedStrings -XScopedTypeVariables -XTypeApplications
-      -XTupleSections
+      -Wall
+  default-extensions:
+      OverloadedStrings
+    , ScopedTypeVariables
+    , TupleSections
+    , TypeApplications
   build-depends:
       base >=4.7 && <5
     , async
@@ -35,8 +39,6 @@ library
     , bytestring
     , containers
     , cryptohash
-    , directory
-    , filepath
     , mmap
     , mtl
     , pathtype
@@ -52,6 +54,15 @@ library
     , Git.Index
     , Git.Index.Parser
     , Git.Index.Types
+    , Git.Internal
+    , Git.Objects
+    , Git.Objects.Blob
+    , Git.Objects.Commit
+    , Git.Objects.GitObject
+    , Git.Objects.Object
+    , Git.Objects.Serialise
+    , Git.Objects.Tag
+    , Git.Objects.Tree
     , Git.Pack
     , Git.Pack.Delta
     , Git.Pack.Index
@@ -59,14 +70,10 @@ library
     , Git.Pack.PackSet
     , Git.Refs
     , Git.Repository
-    , Git.Serialise
+    , Git.Sha1
     , Git.Store
     , Git.Types
     , Git.Types.Error
-    , Git.Types.Internal
-    , Git.Types.Objects
-    , Git.Types.Sha1
-    , Lib
   other-modules:
       Paths_hs_git_tools
   default-language: Haskell2010
@@ -89,8 +96,12 @@ test-suite hs-git-test
   hs-source-dirs:
       test
   ghc-options:
-      -threaded -rtsopts -with-rtsopts=-N -Wall -XScopedTypeVariables
-      -XOverloadedStrings -XTypeApplications
+      -threaded -rtsopts -with-rtsopts=-N -Wall
+  default-extensions:
+      OverloadedStrings
+    , ScopedTypeVariables
+    , TupleSections
+    , TypeApplications
   build-depends:
       base >=4.7 && <5
     , hs-git-tools
@@ -107,9 +118,9 @@ test-suite hs-git-test
     , quickcheck-instances
   other-modules:
       Git.Index.ParserSpec
-      Git.SerialiseSpec
+      Git.Objects.SerialiseSpec
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec
-      Git.Types.Sha1Spec
+      Git.Sha1Spec
       Paths_hs_git_tools
   default-language: Haskell2010

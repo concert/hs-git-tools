@@ -21,15 +21,17 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
 import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
+import qualified System.Path as Path
 import Text.Printf (printf)
 
-import Git.Serialise (tellParsePos)
-import Git.Types (Sha1, sha1Size, GitError(..), ObjectType(..))
-import Git.Types.Internal
-  (MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1)
-import qualified Git.Types.Sha1 as Sha1
+import Git.Internal
+  ( MmapHandle, mmapData, MmapFrom(..), MmapTo(..), mmapSha1
+  , tellParsePos, lazyParseOnly)
+import Git.Objects (ObjectType(..))
+import Git.Sha1 (Sha1, sha1Size)
+import qualified Git.Sha1 as Sha1
+import Git.Types (GitError(..))
 
-import Git.Serialise (lazyParseOnly)
 import Git.Pack.Delta (DeltaInstruction(..), DeltaBody(..))
 
 data PackObjectType
@@ -59,9 +61,10 @@ data PackHandle = PackHandle
   , phNumObjects :: Word32
   } deriving (Show)
 
-openPackFile :: (MonadIO m, MonadError GitError m) => FilePath -> m PackHandle
+openPackFile
+  :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m PackHandle
 openPackFile path = do
-    h <- liftIO $ mmapFileForeignPtr path ReadOnly Nothing
+    h <- liftIO $ mmapFileForeignPtr (Path.toString path) ReadOnly Nothing
     (version, numObjects) <- either (throwError . ParseError) return $
         parseOnly headerP $ mmapData h (FromStart 0) (Length 12)
     unless (version == 2) $ throwError UnsupportedPackFileVersion

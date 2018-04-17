@@ -10,13 +10,14 @@ import Control.Monad.State (StateT(..), evalStateT)
 import Control.Monad.State.Class (MonadState(get, put))
 import Control.Monad.Trans (MonadTrans(..))
 import qualified Data.ByteString as BS
-import Data.List (isSuffixOf)
 import Data.Word
-import System.Directory (listDirectory)
-import System.FilePath.Posix ((</>))
+import qualified System.Path as Path
+import System.Path ((</>))
+import System.Path.Directory (filesInDir)
 
-import Git.Types (Sha1, GitError, ObjectType)
-import Git.Types.Internal (replaceSuffix, liftEitherGitError)
+import Git.Objects (ObjectType)
+import Git.Sha1 (Sha1)
+import Git.Types (GitError)
 
 import Git.Pack.Index
   (PackIndexState, openPackIndex, getPackRecordOffset)
@@ -30,17 +31,17 @@ type PackPair = (PackIndexState, PackHandle)
 type PackSet = [PackPair]
 type PackSetM m r = ExceptT GitError (StateT PackSet m) r
 
-openPackSet :: (MonadIO m, MonadError GitError m) => FilePath -> m PackSet
-openPackSet packDirPath = do
-  files <- liftIO $ listDirectory packDirPath
-  let indexNames = filter (".idx" `isSuffixOf`) files
-  packNames <- liftEitherGitError $ mapM (replaceSuffix "idx" "pack") indexNames
-  indexStates <- mapM (openPackIndex . (packDirPath </>)) indexNames
-  packHandles <- mapM (openPackFile . (packDirPath </>)) packNames
+openPackSet :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m PackSet
+openPackSet packDir = do
+  files <- liftIO $ filesInDir packDir
+  let indexNames = filter (Path.hasExtension ".idx") files
+  let packNames = flip Path.replaceExtension "pack" <$> indexNames
+  indexStates <- mapM (openPackIndex . (packDir </>)) indexNames
+  packHandles <- mapM (openPackFile . (packDir </>)) packNames
   return $ zip indexStates packHandles
 
 -- This is a bit of a hack just to make it easier to use this code from Store...
-withPackSet :: MonadIO m => FilePath -> PackSetM m r -> m r
+withPackSet :: MonadIO m => Path.AbsDir -> PackSetM m r -> m r
 withPackSet path m = do
     ps <- except $ runExceptT $ openPackSet path
     except $ evalStateT (runExceptT m) ps

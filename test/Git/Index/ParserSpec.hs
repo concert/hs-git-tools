@@ -9,16 +9,15 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
 import qualified System.Path as Path
 
-import Git.Serialise (lazyParseOnly)
-import Git.Types (Sha1)
-import qualified Git.Types.Sha1 as Sha1
-import Git.Types.Internal ()
+import Git.Internal (lazyParseOnly)
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 
 import Git.Index.Types
   ( Stages(..), Index(..), IndexVersion(..), IndexEntry(..), gitFileStat
   , GitFileStat(..))
 import Git.Index.Parser (indexP)
-import Git.Types.Objects (FileMode(..))
+import Git.Types (FileMode(..))
 
 deriving instance Eq a => Eq (Stages a)
 deriving instance Eq Index

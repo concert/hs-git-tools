@@ -14,12 +14,14 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Word
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
+import qualified System.Path as Path
 import Text.Printf (printf)
 
-import Git.Types.Internal
+import Git.Internal
   ( MmapHandle, MmapFrom(..), MmapTo(..), mmapData
   , mmapWord32be, mmapWord64be, mmapSha1)
-import Git.Types (Sha1(..), sha1Size, GitError(..))
+import Git.Sha1 (Sha1(..), sha1Size)
+import Git.Types (GitError(..))
 
 data PackIndexVersion = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
@@ -56,18 +58,18 @@ instance Show PackIndexState where
       printf "<PackIndexState: %s, records: %d>" (show v) totRecs
 
 openPackIndex
-  :: (MonadIO m, MonadError GitError m) => FilePath -> m PackIndexState
+  :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m PackIndexState
 openPackIndex indexPath = do
-  h <- liftIO $ mmapFileForeignPtr indexPath ReadOnly Nothing
+  h <- liftIO $ mmapFileForeignPtr (Path.toString indexPath) ReadOnly Nothing
   v <- getPackIndexVersion h
   return $ packIndexState v h
 
 withPackIndex
   :: MonadIO m
-  => FilePath -> StateT PackIndexState (ExceptT GitError m) r
+  => Path.AbsFile -> StateT PackIndexState (ExceptT GitError m) r
   -> m (Either GitError r)
 withPackIndex path m = runExceptT $ do
-  h <- excTIO $ mmapFileForeignPtr path ReadOnly Nothing
+  h <- excTIO $ mmapFileForeignPtr (Path.toString path) ReadOnly Nothing
   v <- getPackIndexVersion h
   res <- evalStateT m (packIndexState v h)
   return res

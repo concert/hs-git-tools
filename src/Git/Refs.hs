@@ -10,16 +10,17 @@ import qualified Data.ByteString as BS
 import Data.Tagged (Tagged(..))
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
-import System.FilePath.Posix ((</>))
-import System.Directory (listDirectory)
-import System.IO (withBinaryFile, IOMode(..))
 import System.IO.Error (isDoesNotExistError)
+import qualified System.Path as Path
+import System.Path ((</>))
+import System.Path.Directory (filesInDir)
+import System.Path.IO (withBinaryFile, IOMode(..))
 
+import Git.Internal ()
+import Git.Objects (Commit)
 import Git.Repository (Repo, repoRefsPath, repoHeadPath)
-import Git.Serialise (sha1HexParser)
-import Git.Types (Sha1, Commit)
-import Git.Types.Internal ()
-import qualified Git.Types.Sha1 as Sha1
+import Git.Sha1 (Sha1, sha1HexParser)
+import qualified Git.Sha1 as Sha1
 
 
 class Sha1Pointer a where
@@ -36,26 +37,31 @@ data RtRemote = RtRemote {rtRemoteName :: String} deriving (Show, Eq)
 data Ref rt = Ref {refType :: rt, unRef :: String} deriving (Show, Eq)
 
 class RefType rt where
-  refTypePath :: Repo -> rt -> FilePath
+  refTypePath :: Repo -> rt -> Path.AbsDir
   refTypePathParser :: Parser (Ref rt)
 
 instance RefType RtHead where
-  refTypePath repo _ = repoRefsPath repo </> "heads"
+  refTypePath repo _ = repoRefsPath repo </> Path.relDir "heads"
   refTypePathParser = string "refs/heads/" >> (Ref RtHead <$> stringParser)
+
 instance RefType RtTag where
-  refTypePath repo _ = repoRefsPath repo </> "tags"
+  refTypePath repo _ = repoRefsPath repo </> Path.relDir "tags"
   refTypePathParser = string "refs/tags/" >> (Ref RtTag <$> stringParser)
+
 instance RefType RtRemote where
-  refTypePath repo rt = repoRefsPath repo </> "remotes" </> rtRemoteName rt
+  refTypePath repo rt =
+    repoRefsPath repo </> Path.relDir "remotes"
+    </> Path.relDir (rtRemoteName rt)
   refTypePathParser = do
     _ <- string "refs/remotes/"
+    -- FIXME: test this parser - I think takeTill will leave the '/' on
     remoteName <- decodeString <$> Char8.takeTill (== '/')
     refName <- stringParser
     return $ Ref (RtRemote remoteName) refName
 
 getRefs :: RefType rt => Repo -> rt -> IO [Ref rt]
-getRefs repo rt = either filterError (fmap $ Ref rt) <$>
-    try (listDirectory $ refTypePath repo rt)
+getRefs repo rt = either filterError (fmap $ Ref rt . Path.toString) <$>
+    try (filesInDir $ refTypePath repo rt)
   where
     filterError e = if isDoesNotExistError e then [] else throw e
 
@@ -65,7 +71,8 @@ openRef
 openRef repo ref = Tagged <$> getSha1 repo ref
 
 instance RefType rt => Sha1Pointer (Ref rt) where
-  getSha1 repo ref = let path = refTypePath repo (refType ref) </> unRef ref in
+  getSha1 repo ref =
+    let path = refTypePath repo (refType ref) </> Path.relFile (unRef ref) in
     liftIO (
       withBinaryFile path ReadMode
       (fmap (Sha1.fromHexText . Text.stripEnd . decodeUtf8) . BS.hGetContents))

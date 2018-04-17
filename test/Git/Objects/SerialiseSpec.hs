@@ -1,7 +1,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , StandaloneDeriving
+#-}
 
-module Git.SerialiseSpec where
+module Git.Objects.SerialiseSpec where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -20,17 +23,19 @@ import Data.Time
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
-import Git.Serialise
-  ( tellParsePos
-  , decodeObject, encodeObject
+import Git.Internal (Wrapable(..), tellParsePos)
+import Git.Types (FileMode(..))
+import Git.Objects
+  (GitObject(gitObjectType), Object
+  , Commit(..), Blob(..), Tree(..), TreeRow(..))
+import Git.Objects.Serialise
+  ( decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
-  , GitObject(objectType, unwrap), encodeObjectType)
-import Git.Types (Commit(..), Blob(..), Tree(..), TreeRow(..), FileMode(..))
-import Git.Types.Internal ()
-import Git.Types.Sha1 (Sha1)
-import qualified Git.Types.Sha1 as Sha1
+  , encodeObjectType)
+import Git.Sha1 (Sha1)
+import qualified Git.Sha1 as Sha1
 
-import Git.Types.Sha1Spec ()
+import Git.Sha1Spec ()
 
 deriving instance Eq ZonedTime
 deriving instance Eq Commit
@@ -51,10 +56,10 @@ spec = describe "Serialise" $ do
     checkEncoding blob_527d8d43
   where
     checkEncoding
-      :: forall a. (GitObject a, Show a, Eq a, Arbitrary a)
+      :: forall a. (Wrapable Object a, GitObject a, Show a, Eq a, Arbitrary a)
       => TestObject a -> Spec
     checkEncoding (TestObject objSha1 looseHeader bytes obj) =
-      let tyName = encodeObjectType $ objectType $ Proxy @a in
+      let tyName = encodeObjectType $ gitObjectType $ Proxy @a in
       describe (tyName ++ " encoding") $ do
         it ("should decode a real " ++ tyName) $
           (decodeObject bytes :: Either String a) `shouldBe` Right obj
