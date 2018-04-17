@@ -43,6 +43,7 @@ library
     , filepath
     , mmap
     , mtl
+    , pathtype
     , tagged
     , temporary
     , text
@@ -52,6 +53,9 @@ library
     , zlib
   exposed-modules:
       Git
+    , Git.Index
+    , Git.Index.Parser
+    , Git.Index.Types
     , Git.Internal
     , Git.Objects
     , Git.Objects.Blob
@@ -107,6 +111,7 @@ test-suite hs-git-test
     , bytestring
     , containers
     , mtl
+    , pathtype
     , tagged
     , text
     , time
@@ -114,6 +119,7 @@ test-suite hs-git-test
     , QuickCheck
     , quickcheck-instances
   other-modules:
+      Git.Index.ParserSpec
       Git.Objects.SerialiseSpec
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec

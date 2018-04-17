@@ -22,6 +22,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8)
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
@@ -114,6 +116,9 @@ tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
 
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
+
+nullTermStringP :: Parser Text
+nullTermStringP = decodeUtf8 <$> takeTill' (== '\NUL')
 
 char_ :: Char -> Parser ()
 char_ = void . char

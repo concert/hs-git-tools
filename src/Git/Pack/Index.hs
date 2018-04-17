@@ -22,7 +22,7 @@ import Git.Internal
 import Git.Sha1 (Sha1(..), sha1Size)
 import Git.Types (GitError(..))
 
-data Version = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
+data PackIndexVersion = Version1 | Version2 deriving (Show, Eq, Enum, Bounded)
 
 data PackIndexState
   = PackIndexStateV1
@@ -39,12 +39,12 @@ data PackIndexState
     , pisPackFileSha1 :: Maybe Sha1
     , pisSha1 :: Maybe Sha1}
 
-packIndexState :: Version -> MmapHandle -> PackIndexState
+packIndexState :: PackIndexVersion -> MmapHandle -> PackIndexState
 packIndexState v h = case v of
   Version1 -> PackIndexStateV1 h mempty mempty Nothing Nothing
   Version2 -> PackIndexStateV2 h mempty mempty mempty Nothing Nothing
 
-pisVersion :: PackIndexState -> Version
+pisVersion :: PackIndexState -> PackIndexVersion
 pisVersion PackIndexStateV1 {} = Version1
 pisVersion PackIndexStateV2 {} = Version2
 
@@ -73,15 +73,15 @@ withPackIndex path m = runExceptT $ do
   res <- evalStateT m (packIndexState v h)
   return res
 
-packIndexHeaderSize :: Version -> Int
+packIndexHeaderSize :: PackIndexVersion -> Int
 packIndexHeaderSize Version1 = 0
 packIndexHeaderSize Version2 = 8
 
-packIndexDataStart :: Version -> Int
+packIndexDataStart :: PackIndexVersion -> Int
 packIndexDataStart v = packIndexHeaderSize v + 256 * 4
 
 getPackIndexVersion
-  :: MonadError GitError m => MmapHandle -> m Version
+  :: MonadError GitError m => MmapHandle -> m PackIndexVersion
 getPackIndexVersion h = case mmapData h (FromStart 0) (Length 4) of
     "\255tOc" -> let version = mmapWord32be h (FromStart 4) in
       if version == 2

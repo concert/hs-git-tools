@@ -9,9 +9,9 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 
-import Git.Internal (takeTill', satisfyMap)
+import Git.Internal (satisfyMap, nullTermStringP)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
 import Git.Sha1 (Sha1, sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
@@ -43,7 +43,7 @@ instance GitObject Tree where
     where
       rowP = do
         fileMode <- (oct >>= fileModeFromInt) <* char ' '
-        name <- decodeUtf8 <$> takeTill' (== '\NUL')
+        name <- nullTermStringP
         sha1 <- sha1ByteStringParser
         return (name, TreeRow fileMode sha1)
 

@@ -22,7 +22,7 @@ data FileMode
 
 fileModeToInt :: FileMode -> Int
 fileModeToInt fm = case fm of
-  Directory -> 0o40000
+  Directory -> 0o040000
   NonExecFile -> 0o100644
   NonExecGroupWriteFile -> 0o100664
   ExecFile -> 0o100755
@@ -30,5 +30,5 @@ fileModeToInt fm = case fm of
   GitLink -> 0o160000
 
 fileModeFromInt :: MonadFail m => Int -> m FileMode
-fileModeFromInt i = maybe (fail $ printf "Bad file mode 0o%o" i) return $
-  lookup i $ (\fm -> (fileModeToInt fm, fm)) <$> [minBound..]
+fileModeFromInt i = maybe (fail $ printf "Bad file mode 0o%06o" i) return $
+  lookup i $ [(fileModeToInt fm, fm) | fm <- [minBound..]]
