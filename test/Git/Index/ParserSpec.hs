@@ -15,15 +15,34 @@ import qualified Git.Types.Sha1 as Sha1
 import Git.Types.Internal ()
 
 import Git.Index.Types
-  (Stages(..), Index(..), IndexVersion(..), IndexEntry(..), gitFileStat)
+  ( Stages(..), Index(..), IndexVersion(..), IndexEntry(..), gitFileStat
+  , GitFileStat(..))
 import Git.Index.Parser (indexP)
+import Git.Types.Objects (FileMode(..))
 
 deriving instance Eq a => Eq (Stages a)
 deriving instance Eq Index
 
 spec :: Spec
 spec = describe "Parser" $ do
-  it "should decode a real normal v2 tree" $ pending
+  it "should decode a real normal v2 tree" $
+     (lazyParseOnly indexP v2NormalIndex :: Either String Index)
+     `shouldBe`
+     Right (Index Version2 $ Map.singleton (Path.rel "bar.txt")
+            (Normal
+             (IndexEntry
+              (GitFileStat
+               1523885035.011432596
+               1523885035.011432596
+               2052
+               5508930
+               NonExecFile
+               1000
+               1000
+               0
+              ) shaV2Nor mempty)
+            )
+           )
   it "should decode a real normal v3 tree" $ pending
   it "should decode a real normal v4 tree" $ pending
   it "should decode a real conflicting v2 tree" $
@@ -58,3 +77,16 @@ v2ConflictIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\STX\
 shaV2Cona, shaV2Conb :: Sha1
 shaV2Cona = Sha1.unsafeSha1 "XR\244F9\245-\182}0\173\145C\184j\251\DC4=A_"
 shaV2Conb = Sha1.unsafeSha1 "\ESC-\EOT\135\178\130\210\243\n\160\DLE\EOT6\144\232R\STXl\NAKD"
+
+v2NormalIndex :: BS.ByteString
+v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOHZ\
+    \\212\163\235\NUL\174r\148Z\212\163\235\NUL\174r\148\NUL\NUL\b\EOT\
+    \\NULT\SIB\NUL\NUL\129\164\NUL\NUL\ETX\232\NUL\NUL\ETX\232\NUL\NUL\
+    \\NUL\NUL\
+    \\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145\
+    \\NUL\a\
+    \bar.txt\NUL\NUL\NUL\
+    \\135\173\157o\178S\v\vf\140\130N\236&\130\128ys\240I"
+
+shaV2Nor :: Sha1
+shaV2Nor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
