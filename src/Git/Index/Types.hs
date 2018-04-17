@@ -26,8 +26,6 @@ import Text.Printf (printf)
 
 import Git.Types (FileMode(..), fileModeFromInt)
 import Git.Sha1 (Sha1)
-import Git.Index.Extensions.CachedTree (CachedTree(..))
-import Git.Index.Extensions.ResolveUndo (ResolveUndo(..))
 
 
 data IndexVersion =
@@ -98,17 +96,6 @@ mapToStages m =
 
 -- FIXME: I'm not sure index entries can ever be directories...
 type IndexEntries = Map Path.RelFileDir (Stages IndexEntry)
-data Index
-  = Index
-  { indexVersion :: IndexVersion
-  , indexEntries :: IndexEntries
-  -- Extensions:
-  , exCachedTree :: CachedTree
-  , exResolveUndo :: ResolveUndo
-  } deriving Show
-
-index :: IndexVersion -> Index
-index v = Index v mempty CachedTree ResolveUndo
 
 data GitFileStat
   = GitFileStat
@@ -155,9 +142,3 @@ normaliseFileMode (CMode i) = case fileTy of
       | userExec = ExecFile
       | groupWrite = NonExecGroupWriteFile
       | otherwise = NonExecFile
-
-indexLookup :: Path.RelFileDir -> Index -> Maybe (Stages IndexEntry)
-indexLookup p = Map.lookup p . indexEntries
-
-statFromIndex :: Path.RelFileDir -> Index -> Maybe (Stages GitFileStat)
-statFromIndex p idx = fmap ieGfs <$> Map.lookup p (indexEntries idx)

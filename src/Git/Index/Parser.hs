@@ -32,8 +32,10 @@ import Git.Pack (chunkNumBeP)
 import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
 import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
+import Git.Index.Index (Index(..), index)
+
 import Git.Index.Types
-  ( Index(..), index, IndexVersion(..), versionFromWord32
+  ( IndexVersion(..), versionFromWord32
   , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage, intToStage, mapToStages)
 
