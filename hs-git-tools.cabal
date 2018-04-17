@@ -52,6 +52,7 @@ library
   exposed-modules:
       Git
     , Git.Index
+    , Git.Index.Extensions
     , Git.Index.Extensions.CachedTree
     , Git.Index.Extensions.Class
     , Git.Index.Extensions.ResolveUndo
