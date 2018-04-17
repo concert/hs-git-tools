@@ -110,6 +110,16 @@ tellParsePos :: Parser Int
 tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
   success t pos more (ApIntern.fromPos pos)
 
+-- | Repeat the given parser until at least size bytes have been consumed
+takeFor :: Int -> Parser a -> Parser [a]
+takeFor size p = do
+    startPos <- tellParsePos
+    reverse <$> go (startPos + size) []
+  where
+    go endPos acc = do
+      pos <- tellParsePos
+      if pos < endPos then p >>= go endPos . (:acc) else return acc
+
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
