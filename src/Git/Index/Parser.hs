@@ -33,7 +33,7 @@ import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
 import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Types
-  ( Index(..), IndexVersion(..), versionFromWord32
+  ( Index(..), index, IndexVersion(..), versionFromWord32
   , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage, intToStage, mapToStages)
 
@@ -54,7 +54,7 @@ indexP :: Parser Index
 indexP = do
   (version, numEntries) <- headerP
   entries <- indexEntriesP version numEntries
-  return $ Index version entries
+  return $ (index version) {indexEntries = entries}
 
 headerP :: Parser (IndexVersion, Word32)
 headerP = do

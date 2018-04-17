@@ -26,6 +26,8 @@ import Text.Printf (printf)
 
 import Git.Types (FileMode(..), fileModeFromInt)
 import Git.Sha1 (Sha1)
+import Git.Index.Extensions.CachedTree (CachedTree(..))
+import Git.Index.Extensions.ResolveUndo (ResolveUndo(..))
 
 
 data IndexVersion =
@@ -99,7 +101,13 @@ data Index
   = Index
   { indexVersion :: IndexVersion
   , indexEntries :: IndexEntries
+  -- Extensions:
+  , exCachedTree :: CachedTree
+  , exResolveUndo :: ResolveUndo
   } deriving Show
+
+index :: IndexVersion -> Index
+index v = Index v mempty CachedTree ResolveUndo
 
 data GitFileStat
   = GitFileStat
