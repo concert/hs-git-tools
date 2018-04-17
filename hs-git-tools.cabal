@@ -39,8 +39,6 @@ library
     , bytestring
     , containers
     , cryptohash
-    , directory
-    , filepath
     , mmap
     , mtl
     , pathtype
