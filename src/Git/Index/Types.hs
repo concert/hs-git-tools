@@ -96,6 +96,7 @@ mapToStages m =
       (Nothing, Just base, Just hd, Nothing) -> return $ EditedRm base hd
       _ -> fail $ "Bad stage collection " ++ show (Map.keys m)
 
+-- FIXME: I'm not sure index entries can ever be directories...
 type IndexEntries = Map Path.RelFileDir (Stages IndexEntry)
 data Index
   = Index
