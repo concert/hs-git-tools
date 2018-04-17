@@ -5,12 +5,13 @@
 
 module Git.Index.Parser where
 
+import Control.Applicative ((<|>))
 import Control.Monad (unless, when, replicateM_)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
-  (Parser, (<?>), string, satisfy, takeTill)
+  (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
 import Data.Bits (Bits, (.&.), shiftR, testBit)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
@@ -32,7 +33,8 @@ import Git.Pack (chunkNumBeP)
 import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
 import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
-import Git.Index.Index (Index(..), index)
+import Git.Index.Extensions (extensionP, CachedTree(..), ResolveUndo(..))
+import Git.Index.Index (Index(..))
 
 import Git.Index.Types
   ( IndexVersion(..), versionFromWord32
@@ -50,13 +52,15 @@ openIndex path = do
   content <- liftIO $ openBinaryFile path ReadMode >>=
     LBS.hGetContents
   either (throwError . ParseError) return $
-    lazyParseOnly indexP content
+    lazyParseOnly (indexP <* endOfInput) content
 
 indexP :: Parser Index
 indexP = do
   (version, numEntries) <- headerP
   entries <- indexEntriesP version numEntries
-  return $ (index version) {indexEntries = entries}
+  (ct, ru) <- extensionsP
+  _ <- sha1ByteStringParser
+  return $ Index version entries ct ru
 
 headerP :: Parser (IndexVersion, Word32)
 headerP = do
@@ -155,3 +159,23 @@ momFromList = foldl' f mempty
     f acc ((k1, k2), v) = Map.alter (overK2M k2 v) k1 acc
     overK2M :: Ord k2 => k2 -> v -> Maybe (Map k2 v) -> Maybe (Map k2 v)
     overK2M k2 v = Just . Map.insert k2 v . maybe mempty id
+
+data Extension
+  = NoExt
+  | ExtCachedTree CachedTree
+  | ExtResolveUndo ResolveUndo
+  deriving (Show)
+
+singleExtP :: Parser Extension
+singleExtP =
+      (ExtCachedTree <$> extensionP)
+  <|> (ExtResolveUndo <$> extensionP)
+  <|> (const NoExt <$> extensionP @())
+
+extensionsP :: Parser (CachedTree, ResolveUndo)
+extensionsP =
+    foldl' f (CachedTree mempty, ResolveUndo mempty) <$> many' singleExtP
+  where
+    f x NoExt = x
+    f (_, ru) (ExtCachedTree ct) = (ct, ru)
+    f (ct, _) (ExtResolveUndo ru) = (ct, ru)
