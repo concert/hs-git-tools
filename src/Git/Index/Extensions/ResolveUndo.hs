@@ -9,7 +9,7 @@ import qualified System.Path as Path
 
 import Git.Index.Extensions.Class (IndexExtension(..))
 import Git.Index.Types (intToStage, Stages, mapToStages)
-import Git.Internal (takeFor, nullTermStringP, oct, char_, takeTill')
+import Git.Internal (takeFor, nullTermStringP, oct, char_)
 import Git.Sha1 (Sha1, sha1HexParser)
 
 
