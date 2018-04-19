@@ -30,6 +30,8 @@ import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
+import qualified System.Path as Path
+import System.Path.PartClass (FileDir, AbsRel)
 
 import Git.Types.Error (GitError(..))
 import Git.Sha1 (Sha1)

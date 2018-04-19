@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
   (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
-import Data.Bits (Bits, (.&.), shiftR, testBit)
+import Data.Bits ((.&.), shiftR, testBit)
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
@@ -30,9 +30,10 @@ import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
+import Git.Internal
+  (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
 import Git.Sha1 (sha1ByteStringParser)
-import Git.Types (FileMode, fileModeFromInt, GitError(..))
+import Git.Types (FileMode, fileModeFromInt, GitError(..), checkPath)
 import Git.Index.Extensions (extensionP, CachedTree(..), ResolveUndo(..))
 import Git.Index.Index (Index(..))
 
