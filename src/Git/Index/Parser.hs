@@ -89,6 +89,7 @@ entryP version prevPath = do
     path <- case version of
           Version4 -> v4PathP prevPath
           _ -> v2_3PathP <* padding startPos
+    checkPath path
     return ((path, stage), IndexEntry gfs sha1 flags)
   where
     padding startPos = do
