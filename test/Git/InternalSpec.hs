@@ -47,3 +47,5 @@ lowMaskSpec _ = let name = show $ typeOf $ minBound @a in do
     mapM_ (shouldBe (3 :: a) . lowMask 3) [2, 3, 4]
   it ("should trunctate a large " ++ name) $
     lowMask 15 3 `shouldBe` (7 :: a)
+  it ("should have sane zero behaviour with " ++ name) $
+    lowMask 15 0 `shouldBe` (0 :: a)
