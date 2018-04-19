@@ -12,7 +12,7 @@ import Prelude hiding (fail)
 import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Except (ExceptT(..), MonadError, throwError, runExceptT)
-import Data.Attoparsec.ByteString (Parser, parseOnly, anyWord8)
+import Data.Attoparsec.ByteString (Parser, parseOnly, anyWord8, many1, (<?>))
 import Data.Attoparsec.ByteString.Char8 (char, anyChar, takeTill)
 import Data.Attoparsec.ByteString.Lazy (Result(..), parse)
 import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
@@ -21,6 +21,8 @@ import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
+import Data.Char (ord)
+import Data.Foldable (foldl')
 import Data.List (intercalate)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
@@ -108,6 +110,16 @@ tellParsePos :: Parser Int
 tellParsePos = ApIntern.Parser $ \t pos more _lose success ->
   success t pos more (ApIntern.fromPos pos)
 
+-- | Repeat the given parser until at least size bytes have been consumed
+takeFor :: Int -> Parser a -> Parser [a]
+takeFor size p = do
+    startPos <- tellParsePos
+    reverse <$> go (startPos + size) []
+  where
+    go endPos acc = do
+      pos <- tellParsePos
+      if pos < endPos then p >>= go endPos . (:acc) else return acc
+
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
@@ -119,6 +131,13 @@ char_ = void . char
 
 satisfyMap :: String -> (Char -> Maybe a) -> Parser a
 satisfyMap errStr f = anyChar >>= maybe (fail errStr) return . f
+
+oct :: Parser Int
+oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
+  where
+    digitToInt c = let dig = ord c - ord '0' in
+      if (fromIntegral dig :: Word) < 8 then Just dig else Nothing
+    numberValue = foldl' (\acc -> ((8 * acc) +)) 0
 
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt

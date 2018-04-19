@@ -94,12 +94,8 @@ mapToStages m =
       (Nothing, Just base, Just hd, Nothing) -> return $ EditedRm base hd
       _ -> fail $ "Bad stage collection " ++ show (Map.keys m)
 
+-- FIXME: I'm not sure index entries can ever be directories...
 type IndexEntries = Map Path.RelFileDir (Stages IndexEntry)
-data Index
-  = Index
-  { indexVersion :: IndexVersion
-  , indexEntries :: IndexEntries
-  } deriving Show
 
 data GitFileStat
   = GitFileStat
@@ -146,9 +142,3 @@ normaliseFileMode (CMode i) = case fileTy of
       | userExec = ExecFile
       | groupWrite = NonExecGroupWriteFile
       | otherwise = NonExecFile
-
-indexLookup :: Path.RelFileDir -> Index -> Maybe (Stages IndexEntry)
-indexLookup p = Map.lookup p . indexEntries
-
-statFromIndex :: Path.RelFileDir -> Index -> Maybe (Stages GitFileStat)
-statFromIndex p idx = fmap ieGfs <$> Map.lookup p (indexEntries idx)

@@ -1,17 +1,16 @@
 module Git.Objects.Tree where
 
 import qualified Blaze.ByteString.Builder as Builder
-import Data.Attoparsec.ByteString.Char8 (Parser, char, many', many1, (<?>))
+import Data.Attoparsec.ByteString.Char8 (char, many')
 import qualified Data.ByteString as BS
 import Data.Char (ord)
-import Data.Foldable (foldl')
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 
-import Git.Internal (satisfyMap, nullTermStringP)
+import Git.Internal (nullTermStringP, oct)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
 import Git.Sha1 (Sha1, sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
@@ -46,14 +45,6 @@ instance GitObject Tree where
         name <- nullTermStringP
         sha1 <- sha1ByteStringParser
         return (name, TreeRow fileMode sha1)
-
-
-oct :: Parser Int
-oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
-  where
-    digitToInt c = let dig = ord c - ord '0' in
-      if (fromIntegral dig :: Word) < 8 then Just dig else Nothing
-    numberValue = foldl' (\acc -> ((8 * acc) +)) 0
 
 toOctBS :: Integral a => a -> BS.ByteString
 toOctBS = BS.pack . fmap (fromIntegral . wordToDigit) . toWords

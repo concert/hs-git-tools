@@ -13,13 +13,17 @@ import Git.Internal (lazyParseOnly)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 
+import Git.Index.Index (Index(..), index)
+import Git.Index.Extensions (CachedTree(..), CachedTreeRow(..), ResolveUndo(..))
 import Git.Index.Types
-  ( Stages(..), Index(..), IndexVersion(..), IndexEntry(..), gitFileStat
-  , GitFileStat(..))
+  ( Stages(..), IndexVersion(..), IndexEntry(..), GitFileStat(..), gitFileStat)
 import Git.Index.Parser (indexP)
 import Git.Types (FileMode(..))
 
 deriving instance Eq a => Eq (Stages a)
+deriving instance Eq CachedTreeRow
+deriving instance Eq CachedTree
+deriving instance Eq ResolveUndo
 deriving instance Eq Index
 
 spec :: Spec
@@ -27,32 +31,27 @@ spec = describe "Parser" $ do
   it "should decode a real normal v2 tree" $
      (lazyParseOnly indexP v2NormalIndex :: Either String Index)
      `shouldBe`
-     Right (Index Version2 $ Map.singleton (Path.rel "bar.txt")
-            (Normal
-             (IndexEntry
-              (GitFileStat
-               1523885035.011432596
-               1523885035.011432596
-               2052
-               5508930
-               NonExecFile
-               1000
-               1000
-               0
-              ) shaV2Nor mempty)
-            )
-           )
+     Right (index Version2)
+       { indexEntries = Map.singleton (Path.rel "bar.txt") $
+           Normal $ IndexEntry
+             ( GitFileStat
+                 1523885035.011432596 1523885035.011432596
+                 2052 5508930
+                 NonExecFile
+                 1000 1000 0
+             ) shaV2Nor mempty
+       }
   it "should decode a real normal v3 tree" $ pending
   it "should decode a real normal v4 tree" $ pending
   it "should decode a real conflicting v2 tree" $
      (lazyParseOnly indexP v2ConflictIndex :: Either String Index)
      `shouldBe`
-     Right (Index Version2 $ Map.singleton (Path.rel "f.txt")
-            (EditedRm
+     Right (index Version2)
+       { indexEntries = Map.singleton (Path.rel "f.txt") $
+           EditedRm
              (IndexEntry gitFileStat shaV2Cona mempty)
              (IndexEntry gitFileStat shaV2Conb mempty)
-            )
-           )
+       }
 
 -- NB: the \NUL padding on the end of the first file name is hard to distinguish
 -- from the \NULs that git fills in for the stat information on conflicting
