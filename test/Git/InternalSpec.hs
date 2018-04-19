@@ -15,6 +15,10 @@ spec = describe "Internal" $ do
   describe "lowMask" $ do
     lowMaskSpec $ Proxy @Int
     lowMaskSpec $ Proxy @Word16
+    it "should simply truncate a negative value" $ do
+      lowMask (-4) 3 `shouldBe` (4 :: Int)
+      lowMask (-3) 2 `shouldBe` (1 :: Int)
+
 
 lowMaskSpec
   :: forall a. (Typeable a, Num a, Show a, Bits a, Bounded a) => Proxy a -> Spec
