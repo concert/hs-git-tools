@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE BinaryLiterals #-}
 
 module Git.InternalSpec where
 
@@ -8,7 +9,7 @@ import Data.Bits (Bits)
 import Data.Typeable (Typeable, typeOf, Proxy(..))
 import Data.Word
 
-import Git.Internal (lowMask)
+import Git.Internal (lowMask, assembleBits)
 
 spec :: Spec
 spec = describe "Internal" $ do
@@ -19,6 +20,13 @@ spec = describe "Internal" $ do
       lowMask (-4) 3 `shouldBe` (4 :: Int)
       lowMask (-3) 2 `shouldBe` (1 :: Int)
 
+  describe "assembleBits" $ do
+    it "should truncate single values" $
+      assembleBits [(2, 7 :: Word8)] `shouldBe` 3
+    it "should pack multiple values together" $ do
+      assembleBits [(1, 1 :: Word8), (1, 0), (1, 1), (1, 0)] `shouldBe` 10
+      assembleBits [(2, 7 :: Word8), (1, 0), (5, 0b101010)]
+        `shouldBe` 0b11001010
 
 lowMaskSpec
   :: forall a. (Typeable a, Num a, Show a, Bits a, Bounded a) => Proxy a -> Spec

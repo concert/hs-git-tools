@@ -18,7 +18,7 @@ import Data.Attoparsec.ByteString.Lazy (Result(..), parse)
 import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
 import qualified Data.Attoparsec.Internal.Types as ApIntern
 import Data.Bifunctor (first)
-import Data.Bits (Bits, (.&.))
+import Data.Bits (Bits, (.&.), (.|.), zeroBits, shiftL)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
@@ -142,6 +142,12 @@ oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
 
 lowMask :: (Bits a, Num a) => a -> Int -> a
 lowMask bits n = bits .&. (2 ^ n - 1)
+
+assembleBits :: (Bits a, Num a) => [(Int, a)] -> a
+assembleBits = go zeroBits
+ where
+   go acc [] = acc
+   go acc ((len, a):las) = go (shiftL acc len .|. lowMask a len) las
 
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
