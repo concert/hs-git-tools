@@ -162,3 +162,8 @@ splitWhen p l = case break p l of
 
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn a = splitWhen (== a)
+
+-- Yes, it's shame that we can't just grab the internal list that Path.Path
+-- uses :-(
+pathToList :: (AbsRel ar, FileDir fd) => Path.Path ar fd -> [String]
+pathToList = splitOn Path.pathSeparator . Path.toString

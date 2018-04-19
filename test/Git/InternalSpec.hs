@@ -10,7 +10,7 @@ import Data.Typeable (Typeable, typeOf, Proxy(..))
 import Data.Word
 import qualified System.Path as Path
 
-import Git.Internal (lowMask, assembleBits, splitOn)
+import Git.Internal (lowMask, assembleBits, splitOn, pathToList)
 
 spec :: Spec
 spec = describe "Internal" $ do
@@ -39,6 +39,13 @@ spec = describe "Internal" $ do
       splitOn 'l' "ol" `shouldBe` ["o", ""]
     it "should condense consecutive matches" $
       splitOn 'l' "hello world" `shouldBe` ["he", "o wor", "d"]
+
+  describe "pathToList" $ do
+    it "should split a path" $
+      -- Because this currently goes via a string, the "splitOn" tests really
+      -- describe our behaviour...
+      pathToList (Path.absFile "/foo/bar/baz.txt")
+        `shouldBe` ["foo", "bar", "baz.txt"]
 
 lowMaskSpec
   :: forall a. (Typeable a, Num a, Show a, Bits a, Bounded a) => Proxy a -> Spec
