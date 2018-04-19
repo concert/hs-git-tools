@@ -20,13 +20,12 @@ import qualified Data.Attoparsec.Internal.Types as ApIntern
 import Data.Bifunctor (first)
 import Data.Bits (Bits, (.&.), (.|.), zeroBits, shiftL)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Foldable (foldl')
 import Data.List (intercalate, break)
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8)
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
@@ -35,6 +34,7 @@ import Foreign.ForeignPtr (ForeignPtr)
 import Git.Types.Error (GitError(..))
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
+
 
 instance MonadFail (Either String) where
   fail = Left
@@ -124,8 +124,8 @@ takeFor size p = do
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
-nullTermStringP :: Parser Text
-nullTermStringP = decodeUtf8 <$> takeTill' (== '\NUL')
+nullTermStringP :: Parser String
+nullTermStringP = Char8.unpack <$> takeTill' (== '\NUL')
 
 char_ :: Char -> Parser ()
 char_ = void . char

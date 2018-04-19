@@ -29,7 +29,7 @@ instance IndexExtension CachedTree where
       return $ CachedTree $ Map.fromList rows
     where
       entryP = do
-        path <- Path.rel . Text.unpack <$> nullTermStringP
+        path <- Path.rel <$> nullTermStringP
         entryCount <- decimal
         char_ ' '
         subtreeCount <- decimal

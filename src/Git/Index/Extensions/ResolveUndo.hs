@@ -4,7 +4,6 @@ import Control.Monad (replicateM)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (mapMaybe)
-import qualified Data.Text as Text
 import qualified System.Path as Path
 
 import Git.Index.Extensions.Class (IndexExtension(..))
@@ -23,7 +22,7 @@ instance IndexExtension ResolveUndo where
       return $ ResolveUndo $ Map.fromList entries
     where
       entryP = do
-        path <- Path.rel . Text.unpack <$> nullTermStringP
+        path <- Path.rel <$> nullTermStringP
         stages <- replicateM 3 (oct <* char_ '\NUL')
           >>= mapM foo >>= mapToStages . Map.fromList . mapMaybe id
         return (path, stages)

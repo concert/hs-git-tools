@@ -13,6 +13,7 @@ import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
   (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
 import Data.Bits (Bits, (.&.), shiftR, testBit)
+import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
 import Data.Monoid ((<>))
@@ -21,7 +22,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import Data.Text.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
@@ -143,13 +143,13 @@ flagsP version = do
         <> (flag IntentToAdd $ testBit bits 13)
 
 v2_3PathP :: Parser Path.RelFileDir
-v2_3PathP = Path.rel . Text.unpack . decodeUtf8 <$> takeTill (== 0)
+v2_3PathP = Path.rel . Char8.unpack <$> takeTill (== 0)
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
   cut <- fromIntegral <$> chunkNumBeP
   new <- nullTermStringP
-  return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> new
+  return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> Text.pack new
 
 momFromList :: (Ord k1, Ord k2) => [((k1, k2), v)] -> Map k1 (Map k2 v)
 momFromList = foldl' f mempty

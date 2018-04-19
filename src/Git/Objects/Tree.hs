@@ -3,23 +3,21 @@ module Git.Objects.Tree where
 import qualified Blaze.ByteString.Builder as Builder
 import Data.Attoparsec.ByteString.Char8 (char)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as Char8
 import Data.Char (ord)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
-import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8)
+import qualified System.Path as Path
 
 import Git.Internal (nullTermStringP, oct, takeFor)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
 import Git.Sha1 (Sha1, sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
-import Git.Types (FileMode(..), fileModeToInt, fileModeFromInt)
+import Git.Types (FileMode(..), fileModeToInt, fileModeFromInt, checkPath)
 
 
--- FIXME: the file name should perhaps be a ByteString, because I don't believe
--- an encoding is defined:
-newtype Tree = Tree {unTree :: Map Text TreeRow} deriving (Show, Eq)
+newtype Tree = Tree {unTree :: Map Path.RelFileDir TreeRow} deriving (Show, Eq)
 
 data TreeRow = TreeRow
   { treeRowMode :: FileMode
@@ -34,7 +32,7 @@ instance GitObject Tree where
       b = Builder.fromByteString
       sha1ByteStringB = b . Sha1.unSha1
       fileModeB = b . toOctBS . fileModeToInt
-      nameB = b . encodeUtf8
+      nameB = b . Char8.pack . Path.toString
       rowB (name, TreeRow mode sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
@@ -42,7 +40,8 @@ instance GitObject Tree where
     where
       rowP = do
         fileMode <- (oct >>= fileModeFromInt) <* char ' '
-        name <- nullTermStringP
+        name <- Path.rel <$> nullTermStringP
+        checkPath name
         sha1 <- sha1ByteStringParser
         return (name, TreeRow fileMode sha1)
 
