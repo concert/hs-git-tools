@@ -141,7 +141,7 @@ oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
     numberValue = foldl' (\acc -> ((8 * acc) +)) 0
 
 lowMask :: (Bits a, Num a) => a -> Int -> a
-lowMask bits n = bits .&. 2 ^ n - 1
+lowMask bits n = bits .&. (2 ^ n - 1)
 
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
