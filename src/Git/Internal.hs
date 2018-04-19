@@ -18,6 +18,7 @@ import Data.Attoparsec.ByteString.Lazy (Result(..), parse)
 import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
 import qualified Data.Attoparsec.Internal.Types as ApIntern
 import Data.Bifunctor (first)
+import Data.Bits (Bits, (.&.))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
@@ -138,6 +139,9 @@ oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
     digitToInt c = let dig = ord c - ord '0' in
       if (fromIntegral dig :: Word) < 8 then Just dig else Nothing
     numberValue = foldl' (\acc -> ((8 * acc) +)) 0
+
+lowMask :: (Bits a, Num a) => a -> Int -> a
+lowMask bits n = bits .&. 2 ^ n - 1
 
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt

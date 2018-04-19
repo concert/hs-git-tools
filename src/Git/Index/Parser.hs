@@ -30,7 +30,7 @@ import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
+import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
 import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, GitError(..))
 import Git.Index.Extensions (extensionP, CachedTree(..), ResolveUndo(..))
@@ -149,9 +149,6 @@ v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
   cut <- fromIntegral <$> chunkNumBeP
   new <- nullTermStringP
   return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> new
-
-lowMask :: (Bits a, Num a) => a -> Int -> a
-lowMask bits n = bits .&. 2 ^ n - 1
 
 momFromList :: (Ord k1, Ord k2) => [((k1, k2), v)] -> Map k1 (Map k2 v)
 momFromList = foldl' f mempty
