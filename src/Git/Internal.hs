@@ -24,7 +24,7 @@ import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Foldable (foldl')
-import Data.List (intercalate)
+import Data.List (intercalate, break)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
@@ -151,3 +151,14 @@ assembleBits = go zeroBits
 
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
+
+-- | Split a list into chunks whenever the predicate succeeds on an item.
+--   Consumes the matching item and treats consecutive items as a single match.
+splitWhen :: (a -> Bool) -> [a] -> [[a]]
+splitWhen p l = case break p l of
+  (h, []) -> [h]
+  ([], _:t) -> splitWhen p t
+  (h, t) -> h : splitWhen p t
+
+splitOn :: Eq a => a -> [a] -> [[a]]
+splitOn a = splitWhen (== a)

@@ -8,8 +8,9 @@ import Test.Hspec
 import Data.Bits (Bits)
 import Data.Typeable (Typeable, typeOf, Proxy(..))
 import Data.Word
+import qualified System.Path as Path
 
-import Git.Internal (lowMask, assembleBits)
+import Git.Internal (lowMask, assembleBits, splitOn)
 
 spec :: Spec
 spec = describe "Internal" $ do
@@ -27,6 +28,17 @@ spec = describe "Internal" $ do
       assembleBits [(1, 1 :: Word8), (1, 0), (1, 1), (1, 0)] `shouldBe` 10
       assembleBits [(2, 7 :: Word8), (1, 0), (5, 0b101010)]
         `shouldBe` 0b11001010
+
+  describe "splitOn" $ do
+    it "should handle empty list" $
+      splitOn 'l' "" `shouldBe` [""]
+    it "should handle immediate match" $
+      splitOn 'l' "lo" `shouldBe` ["o"]
+    it "should handle trailing match" $
+      -- Question: should we produce the trailing ""?
+      splitOn 'l' "ol" `shouldBe` ["o", ""]
+    it "should condense consecutive matches" $
+      splitOn 'l' "hello world" `shouldBe` ["he", "o wor", "d"]
 
 lowMaskSpec
   :: forall a. (Typeable a, Num a, Show a, Bits a, Bounded a) => Proxy a -> Spec
