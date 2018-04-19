@@ -1,7 +1,7 @@
 module Git.Objects.Tree where
 
 import qualified Blaze.ByteString.Builder as Builder
-import Data.Attoparsec.ByteString.Char8 (char, many')
+import Data.Attoparsec.ByteString.Char8 (char)
 import qualified Data.ByteString as BS
 import Data.Char (ord)
 import Data.Map (Map)
@@ -10,7 +10,7 @@ import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 
-import Git.Internal (nullTermStringP, oct)
+import Git.Internal (nullTermStringP, oct, takeFor)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
 import Git.Sha1 (Sha1, sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
@@ -38,7 +38,7 @@ instance GitObject Tree where
       rowB (name, TreeRow mode sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
-  objectParser _ = Tree . Map.fromList <$> many' rowP
+  objectParser size = Tree . Map.fromList <$> takeFor (fromIntegral size) rowP
     where
       rowP = do
         fileMode <- (oct >>= fileModeFromInt) <* char ' '
