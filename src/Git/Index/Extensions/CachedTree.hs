@@ -4,16 +4,18 @@ import Data.Attoparsec.ByteString.Char8 (decimal)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Word
-import qualified Data.Text as Text
 import qualified System.Path as Path
 
-import Git.Index.Extensions.Class (IndexExtension(..))
+import Git.Index.Extensions.Class
+  (IndexExtension(..), BuildableIndexExtension(..))
 import Git.Internal (takeFor, nullTermStringP, char_)
 import Git.Sha1 (Sha1, sha1HexParser)
 
 
 newtype CachedTree
-  = CachedTree (Map Path.RelFileDir CachedTreeRow) deriving (Show)
+  = CachedTree
+  { unCachedTree :: Map Path.RelFileDir CachedTreeRow
+  } deriving (Show)
 
 data CachedTreeRow
   = CachedTreeRow
@@ -36,3 +38,7 @@ instance IndexExtension CachedTree where
         char_ '\n'
         sha1 <- sha1HexParser
         return $ (path, CachedTreeRow entryCount subtreeCount sha1)
+
+instance BuildableIndexExtension CachedTree where
+  extBuilder = undefined
+  extEmpty = Map.null . unCachedTree

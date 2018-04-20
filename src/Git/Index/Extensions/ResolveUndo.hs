@@ -6,14 +6,17 @@ import qualified Data.Map as Map
 import Data.Maybe (mapMaybe)
 import qualified System.Path as Path
 
-import Git.Index.Extensions.Class (IndexExtension(..))
+import Git.Index.Extensions.Class
+  (IndexExtension(..), BuildableIndexExtension(..))
 import Git.Index.Types (intToStage, Stages, mapToStages)
 import Git.Internal (takeFor, nullTermStringP, oct, char_)
 import Git.Sha1 (Sha1, sha1HexParser)
 
 
 newtype ResolveUndo
-  = ResolveUndo (Map Path.RelFileDir (Stages Sha1)) deriving (Show)
+  = ResolveUndo
+  { unResolveUndo :: Map Path.RelFileDir (Stages Sha1)
+  } deriving (Show)
 
 instance IndexExtension ResolveUndo where
   extSignature _ = "REUC"
@@ -31,3 +34,7 @@ instance IndexExtension ResolveUndo where
         stage <- intToStage n
         sha1 <- sha1HexParser
         return $ Just (stage, sha1)
+
+instance BuildableIndexExtension ResolveUndo where
+  extBuilder = undefined
+  extEmpty = Map.null . unResolveUndo
