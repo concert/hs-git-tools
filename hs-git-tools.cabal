@@ -52,6 +52,7 @@ library
   exposed-modules:
       Git
     , Git.Index
+    , Git.Index.Builder
     , Git.Index.Extensions
     , Git.Index.Extensions.CachedTree
     , Git.Index.Extensions.Class
@@ -111,6 +112,7 @@ test-suite hs-git-test
       base >=4.7 && <5
     , hs-git-tools
     , attoparsec
+    , blaze-builder
     , bytestring
     , containers
     , mtl
@@ -123,6 +125,7 @@ test-suite hs-git-test
     , quickcheck-instances
   other-modules:
       Git.InternalSpec
+      Git.Index.BuilderSpec
       Git.Index.ParserSpec
       Git.Objects.SerialiseSpec
       Git.Pack.DeltaSpec
