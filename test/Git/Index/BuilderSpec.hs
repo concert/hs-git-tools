@@ -12,7 +12,7 @@ import Git.Index.Index (Index(..), index)
 import Git.Index.Types
   (IndexVersion(..), IndexEntry(..), gitFileStat, Stages(..))
 
-import Git.Index.ParserSpec (v2ConflictIndex, sha1a, sha1b)
+import Git.Index.ParserSpec (v2ConflictIndex, sha1V2Cona, sha1V2Conb)
 
 
 spec :: Spec
@@ -22,8 +22,8 @@ spec = do
       bs = indexLbs $ (index Version2)
         { indexEntries = Map.singleton (Path.rel "f.txt") $
             EditedRm
-              (IndexEntry gitFileStat sha1a mempty)
-              (IndexEntry gitFileStat sha1b mempty)
+              (IndexEntry gitFileStat sha1V2Cona mempty)
+              (IndexEntry gitFileStat sha1V2Conb mempty)
         }
     in
       bs `shouldBe` v2ConflictIndex
