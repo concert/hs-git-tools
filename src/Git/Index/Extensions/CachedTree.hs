@@ -9,7 +9,7 @@ import qualified System.Path as Path
 import Git.Index.Extensions.Class
   (IndexExtension(..), BuildableIndexExtension(..))
 import Git.Internal (takeFor, nullTermStringP, char_)
-import Git.Sha1 (Sha1, sha1HexParser)
+import Git.Sha1 (Sha1, sha1ByteStringParser)
 
 
 newtype CachedTree
@@ -36,7 +36,7 @@ instance IndexExtension CachedTree where
         char_ ' '
         subtreeCount <- decimal
         char_ '\n'
-        sha1 <- sha1HexParser
+        sha1 <- sha1ByteStringParser
         return $ (path, CachedTreeRow entryCount subtreeCount sha1)
 
 instance BuildableIndexExtension CachedTree where
