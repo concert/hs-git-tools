@@ -1,15 +1,19 @@
 module Git.Index.Extensions.CachedTree where
 
+import Blaze.ByteString.Builder (fromByteString)
 import Data.Attoparsec.ByteString.Char8 (decimal)
+import qualified Data.ByteString.Char8 as Char8
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Monoid ((<>))
 import Data.Word
 import qualified System.Path as Path
+import Text.Printf (printf)
 
 import Git.Index.Extensions.Class
   (IndexExtension(..), BuildableIndexExtension(..))
 import Git.Internal (takeFor, nullTermStringP, char_)
-import Git.Sha1 (Sha1, sha1ByteStringParser)
+import Git.Sha1 (Sha1(..), sha1ByteStringParser)
 
 
 newtype CachedTree
@@ -40,5 +44,11 @@ instance IndexExtension CachedTree where
         return $ (path, CachedTreeRow entryCount subtreeCount sha1)
 
 instance BuildableIndexExtension CachedTree where
-  extBuilder = undefined
+  extBuilder = Map.foldMapWithKey f . unCachedTree
+    where
+      b = fromByteString
+      p = b . Char8.pack . (++ "\n") . Path.toString
+      d = b . Char8.pack . printf "%d"
+      f path (CachedTreeRow ec sc sha1) =
+        p path <> d ec <> b " " <> d sc <> b "\n" <> b (unSha1 sha1)
   extEmpty = Map.null . unCachedTree
