@@ -124,11 +124,13 @@ commonSuffixes t1 t2 =
     m f (x, y, z) = (f x, f y, f z)
 
 chunkNumBs :: (Integral a, Bits a) => a -> BS.ByteString
-chunkNumBs n =
-  let
-    rest = shiftR n 7
-    bits = fromIntegral $ lowMask n 7
-    continue = rest == 0
-    byte = if continue then bits else bit 7 .|. bits
-  in
-    (if continue then chunkNumBs rest else "") <> BS.singleton byte
+chunkNumBs = inner False
+  where
+    inner prevCont n =
+      let
+        rest = shiftR n 7
+        bits = fromIntegral $ lowMask n 7
+        continue = rest /= 0
+        byte = if prevCont then bit 7 .|. bits else bits
+      in
+        (if continue then inner True (rest - 1) else "") <> BS.singleton byte
