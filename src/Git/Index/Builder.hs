@@ -43,22 +43,29 @@ indexB idx@(Index v es ct ru) =
     <> extensionB ct <> extensionB ru
   where
     entriesBuilder = snd $
-      Map.foldlWithKey' sieB' (Path.toFileDir Path.emptyFile, mempty) es
+      Map.foldlWithKey' sieB' ("", mempty) $
+      -- We convert the Paths to Strings so that the encoding (esp V4) can just
+      -- worry about serialising the Strings, rather than normalising the Paths:
+      Map.mapKeys Path.toString es
     sieB' (prevPath, builder) path stages =
-      (path, builder <> sieB v prevPath path stages)
+      let (prevPath', builder') = sieB v prevPath path stages in
+      (prevPath', builder <> builder')
 
 sieB
-  :: IndexVersion -> Path.RelFileDir -> Path.RelFileDir -> Stages IndexEntry
-  -> Builder
-sieB v prevPath path stages = Map.foldMapWithKey f $ stagesToMap stages
+  :: IndexVersion -> String -> String -> Stages IndexEntry -> (String, Builder)
+sieB v prevPath path stages = Map.foldlWithKey' f (prevPath, mempty) $ stagesToMap stages
   where
-    f stage (IndexEntry gfs sha1 flags) = pad $
-      gfsB gfs <> fromByteString (unSha1 sha1)
-      <> flagsB (BS.length pathBs) stage flags
-      <> fromByteString pathBs
-    pathBs = case v of
-      Version4 -> encodePathV4 prevPath path
-      _ -> encodePathV2_3 path
+    f :: (String, Builder) -> Stage -> IndexEntry -> (String, Builder)
+    f (pp, builder) stage (IndexEntry gfs sha1 flags) =
+      let
+        pathBs = case v of
+          Version4 -> encodePathV4 pp path
+          _ -> Char8.pack path
+        builder' = pad $ gfsB gfs <> fromByteString (unSha1 sha1)
+          <> flagsB (BS.length pathBs) stage flags
+          <> fromByteString pathBs
+      in
+        (path, builder <> builder')
     pad = case v of
       Version4 -> id
       _ -> padTo8
@@ -105,23 +112,15 @@ flagsB pathLen stage flags = fromWord16be bits <> continuation
       , (13, 0)
       ]
 
-encodePathV2_3 :: Path.RelFileDir -> BS.ByteString
-encodePathV2_3 = Char8.pack . Path.toString
-
-encodePathV4 :: Path.RelFileDir -> Path.RelFileDir -> BS.ByteString
-encodePathV4 p1 p2 = case commonSuffixes t1 t2 of
-    Nothing -> f t1 t2
-    Just (common, _, t) -> f common t
+encodePathV4 :: String -> String -> BS.ByteString
+encodePathV4 s1 s2 = case Text.commonPrefixes t1 t2 of
+    Nothing -> f "" t2
+    Just (common, _, x) -> f common x
   where
-    t1 = Text.pack $ Path.toString p1
-    t2 = Text.pack $ Path.toString p2
-    f x y = chunkNumBs (Text.length x) <> Char8.pack (Text.unpack y)
-
-commonSuffixes :: Text -> Text -> Maybe (Text, Text, Text)
-commonSuffixes t1 t2 =
-    m Text.reverse <$> Text.commonPrefixes (Text.reverse t1) (Text.reverse t2)
-  where
-    m f (x, y, z) = (f x, f y, f z)
+    t1 = Text.pack s1
+    t2 = Text.pack s2
+    f common newSuffix = chunkNumBs (Text.length t1 - Text.length common)
+      <> Char8.pack (Text.unpack newSuffix) <> Char8.singleton '\NUL'
 
 chunkNumBs :: (Integral a, Bits a) => a -> BS.ByteString
 chunkNumBs = inner False

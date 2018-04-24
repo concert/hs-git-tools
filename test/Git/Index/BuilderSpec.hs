@@ -16,7 +16,7 @@ import qualified System.Path as Path
 
 import Git.Pack.Pack (chunkNumBeP)
 
-import Git.Index.Builder (indexLbs, chunkNumBs)
+import Git.Index.Builder (indexLbs, chunkNumBs, encodePathV4)
 import Git.Index.Index (Index(..), index)
 import Git.Index.Types
   (IndexVersion(..), IndexEntry(..), gitFileStat, Stages(..))
@@ -46,3 +46,11 @@ spec = do
     it "should roundtrip" $ property $ \n ->
       parseOnly (chunkNumBeP <* endOfInput) (chunkNumBs @Word64 n)
         `shouldBe` Right n
+
+  describe "encodePathV4" $ do
+    it "should return the path if given no previous path" $
+      encodePathV4 "" "foo/bar" `shouldBe` "\NULfoo/bar\NUL"
+    it "should remove a common substring of the previous path" $
+      encodePathV4 "foo/bar" "foo/baz" `shouldBe` "\SOHz\NUL"
+    it "should cope with adding onto the path" $
+      encodePathV4 "foo/" "foo/bar" `shouldBe` "\NULbar\NUL"
