@@ -30,6 +30,7 @@ data CachedTreeRow
 
 instance IndexExtension CachedTree where
   extSignature _ = "TREE"
+  extEmpty = CachedTree mempty
   extParser size = do
       rows <- takeFor (fromIntegral size) entryP
       return $ CachedTree $ Map.fromList rows
@@ -51,4 +52,4 @@ instance BuildableIndexExtension CachedTree where
       d = b . Char8.pack . printf "%d"
       f path (CachedTreeRow ec sc sha1) =
         p path <> d ec <> b " " <> d sc <> b "\n" <> b (unSha1 sha1)
-  extEmpty = Map.null . unCachedTree
+  extNull = Map.null . unCachedTree

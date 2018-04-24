@@ -173,7 +173,7 @@ singleExtP =
 
 extensionsP :: Parser (CachedTree, ResolveUndo)
 extensionsP =
-    foldl' f (CachedTree mempty, ResolveUndo mempty) <$> many' singleExtP
+    foldl' f (extEmpty, extEmpty) <$> many' singleExtP
   where
     f x NoExt = x
     f (_, ru) (ExtCachedTree ct) = (ct, ru)

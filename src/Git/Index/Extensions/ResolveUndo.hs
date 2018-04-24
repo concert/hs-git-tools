@@ -51,4 +51,4 @@ instance BuildableIndexExtension ResolveUndo where
       modes stages = mconcat $ fmap (b . Char8.pack . printf "%o\NUL" . snd) $
         Map.toAscList $ fmap (fileModeToInt . fst) stages <> defaultModes
       sha1s = mconcat . fmap (b . unSha1 . snd . snd) . Map.toAscList
-  extEmpty = Map.null . unResolveUndo
+  extNull = Map.null . unResolveUndo

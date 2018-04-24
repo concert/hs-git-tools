@@ -4,7 +4,8 @@ import qualified Data.Map as Map
 import qualified System.Path as Path
 import Data.Word
 
-import Git.Index.Extensions (CachedTree(..), ResolveUndo(..))
+import Git.Index.Extensions
+  (IndexExtension(..), CachedTree(..), ResolveUndo(..))
 import Git.Index.Types
   (IndexVersion, IndexEntries, IndexEntry(..), GitFileStat, Stages, stagesToMap)
 
@@ -18,7 +19,7 @@ data Index
   } deriving Show
 
 index :: IndexVersion -> Index
-index v = Index v mempty (CachedTree mempty) (ResolveUndo mempty)
+index v = Index v mempty extEmpty extEmpty
 
 indexLookup :: Path.RelFileDir -> Index -> Maybe (Stages IndexEntry)
 indexLookup p = Map.lookup p . indexEntries

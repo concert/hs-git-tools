@@ -20,11 +20,12 @@ class IndexExtension a where
   extSignatureParser p = void $ string $ extSignature p
 
   extSignature :: Proxy a -> BS.ByteString
+  extEmpty :: a
   extParser :: Word32 -> Parser a
 
 class IndexExtension a => BuildableIndexExtension a where
   extBuilder :: a -> Builder
-  extEmpty :: a -> Bool
+  extNull :: a -> Bool
 
 extensionP :: forall a. IndexExtension a => Parser a
 extensionP = do
@@ -36,11 +37,12 @@ extensionP = do
 instance IndexExtension () where
   extSignatureParser _ = replicateM_ 4 $ satisfy isUpper
   extSignature _ = ""  -- Unused
+  extEmpty = ()
   extParser size = void $ take $ fromIntegral size
 
 extensionB :: forall a. BuildableIndexExtension a => a -> Builder
 extensionB ext =
-    if extEmpty ext then mempty else
+    if extNull ext then mempty else
     fromByteString (extSignature $ Proxy @a) <> withLength extBytes
   where
     withLength :: BS.ByteString -> Builder
