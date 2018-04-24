@@ -15,6 +15,7 @@ import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
+import Data.List (intercalate)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.Proxy
@@ -194,11 +195,14 @@ smallListOf1 g = do
   replicateM l g
 
 arbitraryGitPath :: Gen Path.RelFileDir
-arbitraryGitPath = Path.rel . mconcat <$> smallListOf1 component
+arbitraryGitPath = Path.rel . intercalate "/" <$> comps
   where
-    component = do
-      c <- Char8.unpack . Char8.filter (/= '\NUL') <$> arbitrary
-      if legalPathComponent c then return c else component
+    name = oneof $ pure <$> ["foo", "bar", "baz", "qux"]
+    ext = oneof $ pure <$> ["hs", "py", "sh", "txt"]
+    dotted g = frequency [(3, g), (1, ("." ++) <$> g)]
+    exted g = oneof [g, (\a b -> a ++ "." ++ b) <$> g <*> ext]
+    comps = (\l i -> l ++ [i]) <$> smallListOf1 (dotted name)
+      <*> oneof [dotted name, exted $ dotted name]
 
 
 instance Arbitrary TreeRow where
