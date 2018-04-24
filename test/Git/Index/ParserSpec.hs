@@ -7,6 +7,7 @@ import Test.Hspec
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified System.Path as Path
 
 import Git.Internal (lazyParseOnly)
@@ -17,7 +18,8 @@ import Git.Index.Index (Index(..), index)
 import Git.Index.Extensions
   (CachedTree(..), CachedTreeRow(..), ResolveUndo(..), ResolveUndoStages(..))
 import Git.Index.Types
-  ( Stages(..), IndexVersion(..), IndexEntry(..), GitFileStat(..), gitFileStat)
+  ( Stages(..), IndexVersion(..), IndexEntry(..), GitFileStat(..), gitFileStat
+  , Flag(..))
 import Git.Index.Parser (indexP)
 import Git.Types (FileMode(..))
 
@@ -52,7 +54,7 @@ spec = describe "Parser" $ do
                Path.rel "bar.txt",
                Normal $ IndexEntry
                ( GitFileStat
-                  1523885035.011432596 1523885035.011432596
+                  1524152171.351220571 1524152171.351220571
                   2052 5508930
                   NonExecFile
                   1000 1000 0
@@ -60,7 +62,8 @@ spec = describe "Parser" $ do
             ),
             (
                Path.rel "foo.a",
-               Normal (IndexEntry gitFileStat shaNor mempty)
+               Normal
+                 (IndexEntry gitFileStat shaNor (Set.singleton IntentToAdd))
             )
         ]
        }
