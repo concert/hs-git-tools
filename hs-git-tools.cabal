@@ -127,6 +127,7 @@ test-suite hs-git-test
       Git.InternalSpec
       Git.Index.BuilderSpec
       Git.Index.ParserSpec
+      Git.Index.RoundtripSpec
       Git.Objects.SerialiseSpec
       Git.Pack.DeltaSpec
       Git.Pack.PackSpec

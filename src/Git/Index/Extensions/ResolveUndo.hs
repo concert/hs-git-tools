@@ -77,7 +77,7 @@ instance BuildableIndexExtension ResolveUndo where
   extBuilder = Map.foldMapWithKey f . fmap (stagesToMap . toStages) . unResolveUndo
     where
       b = fromByteString
-      p = b . Char8.pack . (++ "\n") . Path.toString
+      p = b . Char8.pack . (++ "\NUL") . Path.toString
       f path stages = p path <> modes stages <> sha1s stages
       defaultModes = Map.fromList [(m, 0) | m <- [succ minBound..]]
       modes stages = mconcat $ fmap (b . Char8.pack . printf "%o\NUL" . snd) $

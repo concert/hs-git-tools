@@ -48,7 +48,7 @@ instance BuildableIndexExtension CachedTree where
   extBuilder = Map.foldMapWithKey f . unCachedTree
     where
       b = fromByteString
-      p = b . Char8.pack . (++ "\n") . Path.toString
+      p = b . Char8.pack . (++ "\NUL") . Path.toString
       d = b . Char8.pack . printf "%d"
       f path (CachedTreeRow ec sc sha1) =
         p path <> d ec <> b " " <> d sc <> b "\n" <> b (unSha1 sha1)

@@ -32,9 +32,10 @@ import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 import Git.Pack (chunkNumBeP)
 import Git.Internal
   (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
-import Git.Sha1 (sha1ByteStringParser)
+import Git.Sha1 (sha1ByteStringParser, sha1Size)
 import Git.Types (FileMode, fileModeFromInt, GitError(..), checkPath)
-import Git.Index.Extensions (extensionP, CachedTree(..), ResolveUndo(..))
+import Git.Index.Extensions
+  (IndexExtension(..), extensionP, CachedTree(..), ResolveUndo(..))
 import Git.Index.Index (Index(..))
 
 import Git.Index.Types
@@ -52,15 +53,18 @@ openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
 openIndex path = do
   content <- liftIO $ openBinaryFile path ReadMode >>=
     LBS.hGetContents
-  either (throwError . ParseError) return $
-    lazyParseOnly (indexP <* endOfInput) content
+  either (throwError . ParseError) return $ parseIndex content
+
+parseIndex :: LBS.ByteString -> Either String Index
+parseIndex lbs = lazyParseOnly (indexP <* endOfInput) $
+  LBS.take (LBS.length lbs - fromIntegral sha1Size) lbs
 
 indexP :: Parser Index
 indexP = do
   (version, numEntries) <- headerP
   entries <- indexEntriesP version numEntries
   (ct, ru) <- extensionsP
-  _ <- sha1ByteStringParser
+  -- _ <- sha1ByteStringParser
   return $ Index version entries ct ru
 
 headerP :: Parser (IndexVersion, Word32)
@@ -72,7 +76,8 @@ headerP = do
 
 indexEntriesP :: IndexVersion -> Word32 -> Parser IndexEntries
 indexEntriesP version numEntries =
-    go (Path.rel "") numEntries >>= mapM mapToStages . momFromList
+    go (Path.toFileDir Path.emptyFile) numEntries >>=
+    mapM mapToStages . momFromList
   where
     go _ 0 = return []
     go prevPath ne = do

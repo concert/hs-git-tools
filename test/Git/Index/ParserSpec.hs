@@ -14,7 +14,8 @@ import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 
 import Git.Index.Index (Index(..), index)
-import Git.Index.Extensions (CachedTree(..), CachedTreeRow(..), ResolveUndo(..))
+import Git.Index.Extensions
+  (CachedTree(..), CachedTreeRow(..), ResolveUndo(..), ResolveUndoStages(..))
 import Git.Index.Types
   ( Stages(..), IndexVersion(..), IndexEntry(..), GitFileStat(..), gitFileStat)
 import Git.Index.Parser (indexP)
@@ -24,6 +25,7 @@ deriving instance Eq a => Eq (Stages a)
 deriving instance Eq CachedTreeRow
 deriving instance Eq CachedTree
 deriving instance Eq ResolveUndo
+deriving instance Eq a => Eq (ResolveUndoStages a)
 deriving instance Eq Index
 
 spec :: Spec
