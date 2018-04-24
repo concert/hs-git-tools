@@ -111,10 +111,11 @@ gfsP = do
   return $ GitFileStat ctime mtime devId inodeNo mode uid gid size
 
 posixTimeP :: Parser POSIXTime
-posixTimeP = do
-  seconds <- fromIntegral <$> anyWord32be
-  nanofrac <- anyWord32be
-  return $ systemToPOSIXTime $ MkSystemTime seconds nanofrac
+posixTimeP = mkPosixTime <$> anyWord32be <*> anyWord32be
+
+mkPosixTime :: Word32 -> Word32 -> POSIXTime
+mkPosixTime seconds nanofrac =
+  systemToPOSIXTime $ MkSystemTime (fromIntegral seconds) nanofrac
 
 fileModeP :: Parser FileMode
 fileModeP = anyWord32be >>= fileModeFromInt . fromIntegral
