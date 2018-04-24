@@ -129,7 +129,7 @@ chunkNumBs = inner False
       let
         rest = shiftR n 7
         bits = fromIntegral $ lowMask n 7
-        continue = rest /= 0
+        continue = rest > 0
         byte = if prevCont then bit 7 .|. bits else bits
       in
         (if continue then inner True (rest - 1) else "") <> BS.singleton byte
