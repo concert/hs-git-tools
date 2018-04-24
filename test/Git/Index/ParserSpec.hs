@@ -39,7 +39,7 @@ spec = describe "Parser" $ do
                  2052 5508930
                  NonExecFile
                  1000 1000 0
-             ) shaV2Nor mempty
+             ) shaNor mempty
        }
   it "should decode a real normal v3 tree" $
      (lazyParseOnly indexP v3NormalIndex :: Either String Index)
@@ -54,11 +54,11 @@ spec = describe "Parser" $ do
                   2052 5508930
                   NonExecFile
                   1000 1000 0
-               ) shaV2Nor mempty
+               ) shaNor mempty
             ),
             (
                Path.rel "foo.a",
-               Normal (IndexEntry gitFileStat shaV2Nor mempty)
+               Normal (IndexEntry gitFileStat shaNor mempty)
             )
         ]
        }
@@ -73,7 +73,7 @@ spec = describe "Parser" $ do
                  2052 5508930
                  NonExecFile
                  1000 1000 0
-             ) shaV4Nor mempty
+             ) shaNor mempty
        }
   it "should decode a real conflicting v2 tree" $
      (lazyParseOnly indexP v2ConflictIndex :: Either String Index)
@@ -119,9 +119,6 @@ v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOH\
     \bar.txt\NUL\NUL\NUL\
     \\135\173\157o\178S\v\vf\140\130N\236&\130\128ys\240I"
 
-shaV2Nor :: Sha1
-shaV2Nor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
-
 v3NormalIndex :: BS.ByteString
 v3NormalIndex = "DIRC\NUL\NUL\NUL\ETX\NUL\NUL\NUL\STX\
     \Z\216\183k\DC4\239\&3[Z\216\183\
@@ -151,5 +148,5 @@ v4NormalIndex = "DIRC\NUL\NUL\NUL\EOT\NUL\NUL\NUL\SOH\
     \\NULbar.txt\NUL\
     \\139 \162FI\DC1\229\226\190\\\223\229\247 y\159\209\145B7"
 
-shaV4Nor :: Sha1
-shaV4Nor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
+shaNor :: Sha1
+shaNor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
