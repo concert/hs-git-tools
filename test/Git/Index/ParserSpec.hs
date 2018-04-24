@@ -41,10 +41,42 @@ spec = describe "Parser" $ do
                  2052 5508930
                  NonExecFile
                  1000 1000 0
-             ) shaV2Nor mempty
+             ) shaNor mempty
        }
-  it "should decode a real normal v3 tree" $ pending
-  it "should decode a real normal v4 tree" $ pending
+  it "should decode a real normal v3 tree" $
+     (lazyParseOnly indexP v3NormalIndex :: Either String Index)
+     `shouldBe`
+     Right (index Version3)
+       { indexEntries = Map.fromList [
+            (
+               Path.rel "bar.txt",
+               Normal $ IndexEntry
+               ( GitFileStat
+                  1523885035.011432596 1523885035.011432596
+                  2052 5508930
+                  NonExecFile
+                  1000 1000 0
+               ) shaNor mempty
+            ),
+            (
+               Path.rel "foo.a",
+               Normal (IndexEntry gitFileStat shaNor mempty)
+            )
+        ]
+       }
+  it "should decode a real normal v4 tree" $
+     (lazyParseOnly indexP v4NormalIndex :: Either String Index)
+     `shouldBe`
+     Right (index Version4)
+       { indexEntries = Map.singleton (Path.rel "bar.txt") $
+           Normal $ IndexEntry
+             ( GitFileStat
+                 1524152171.351220571 1524152171.351220571
+                 2052 5508930
+                 NonExecFile
+                 1000 1000 0
+             ) shaNor mempty
+       }
   it "should decode a real conflicting v2 tree" $
      (lazyParseOnly indexP v2ConflictIndex :: Either String Index)
      `shouldBe`
@@ -79,14 +111,44 @@ sha1V2Cona = Sha1.unsafeSha1 ";\CAN\229\DC2\219\167\158L\131\NUL\221\b\174\179\D
 sha1V2Conb = Sha1.unsafeSha1 "oLp\209\203\ENQ\154\247\ETX\162\206\&6\ENQ\209d\b\232\207\SYN\207"
 
 v2NormalIndex :: BS.ByteString
-v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOHZ\
-    \\212\163\235\NUL\174r\148Z\212\163\235\NUL\174r\148\NUL\NUL\b\EOT\
-    \\NULT\SIB\NUL\NUL\129\164\NUL\NUL\ETX\232\NUL\NUL\ETX\232\NUL\NUL\
-    \\NUL\NUL\
+v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOH\
+    \Z\212\163\235\NUL\174r\148Z\212\163\235\
+    \\NUL\174r\148\NUL\NUL\b\EOT\NULT\SIB\
+    \\NUL\NUL\129\164\NUL\NUL\ETX\232\NUL\NUL\ETX\232\
+    \\NUL\NUL\NUL\NUL\
     \\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145\
     \\NUL\a\
     \bar.txt\NUL\NUL\NUL\
     \\135\173\157o\178S\v\vf\140\130N\236&\130\128ys\240I"
 
-shaV2Nor :: Sha1
-shaV2Nor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
+v3NormalIndex :: BS.ByteString
+v3NormalIndex = "DIRC\NUL\NUL\NUL\ETX\NUL\NUL\NUL\STX\
+    \Z\216\183k\DC4\239\&3[Z\216\183\
+    \k\DC4\239\&3[\NUL\NUL\b\EOT\NULT\
+    \\SIB\NUL\NUL\129\164\NUL\NUL\ETX\232\NUL\NUL\
+    \\ETX\232\NUL\NUL\NUL\NUL\
+    \\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145\
+    \\NUL\a\
+    \bar.txt\NUL\NUL\NUL\
+    \\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\
+    \\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\
+    \\NUL\NUL\129\164\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\
+    \\NUL\NUL\NUL\NUL\
+    \\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145\
+    \@\ENQ \NUL\
+    \foo.a\NUL\NUL\NUL\
+    \\194\192 1\187\232\f\171\146\228#\182\203=\170\v\227\USB!"
+
+v4NormalIndex :: BS.ByteString
+v4NormalIndex = "DIRC\NUL\NUL\NUL\EOT\NUL\NUL\NUL\SOH\
+    \Z\216\183k\DC4\239\&3[Z\216\183\
+    \k\DC4\239\&3[\NUL\NUL\b\EOT\NULT\
+    \\SIB\NUL\NUL\129\164\NUL\NUL\ETX\232\NUL\NUL\
+    \\ETX\232\NUL\NUL\NUL\NUL\
+    \\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145\
+    \\NUL\a\
+    \\NULbar.txt\NUL\
+    \\139 \162FI\DC1\229\226\190\\\223\229\247 y\159\209\145B7"
+
+shaNor :: Sha1
+shaNor = Sha1.unsafeSha1 "\230\157\226\155\178\209\214CK\139)\174wZ\216\194\228\140S\145"
