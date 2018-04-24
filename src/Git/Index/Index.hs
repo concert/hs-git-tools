@@ -24,8 +24,8 @@ index v = Index v mempty extEmpty extEmpty
 indexLookup :: Path.RelFileDir -> Index -> Maybe (Stages IndexEntry)
 indexLookup p = Map.lookup p . indexEntries
 
-statFromIndex :: Path.RelFileDir -> Index -> Maybe (Stages GitFileStat)
-statFromIndex p idx = fmap ieGfs <$> Map.lookup p (indexEntries idx)
+gfsFromIndex :: Path.RelFileDir -> Index -> Maybe (Stages GitFileStat)
+gfsFromIndex p idx = fmap ieGfs <$> Map.lookup p (indexEntries idx)
 
 numEntries :: Index -> Word32
 numEntries = fromIntegral . sum . fmap (Map.size . stagesToMap) . indexEntries
