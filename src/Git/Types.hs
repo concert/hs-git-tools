@@ -1,13 +1,18 @@
 module Git.Types
   ( FileMode(..), fileModeToInt, fileModeFromInt
+  , checkPath, legalPathComponent
   , module X
   ) where
 
 import Prelude hiding (fail)
 
+import Control.Monad (unless)
 import Control.Monad.Fail (MonadFail(..))
 import Text.Printf (printf)
+import qualified System.Path as Path
+import System.Path.PartClass (AbsRel, FileDir)
 
+import Git.Internal (pathToList)
 import Git.Types.Error as X
 
 
@@ -32,3 +37,16 @@ fileModeToInt fm = case fm of
 fileModeFromInt :: MonadFail m => Int -> m FileMode
 fileModeFromInt i = maybe (fail $ printf "Bad file mode 0o%06o" i) return $
   lookup i $ [(fileModeToInt fm, fm) | fm <- [minBound..]]
+
+illegalPathComponent :: String -> Bool
+illegalPathComponent comp = comp `elem` ["", ".", "..", ".git"] ||
+  any (\c -> c == '\NUL' || c == '/') comp
+
+legalPathComponent :: String -> Bool
+legalPathComponent = not . illegalPathComponent
+
+checkPath :: (AbsRel ar, FileDir fd, MonadFail m) => Path.Path ar fd -> m ()
+checkPath path = mapM_ checkComponent $ pathToList path
+  where
+    checkComponent comp = unless (legalPathComponent comp) $ fail $
+      printf "Bad path component '%s' in path %s" comp (Path.toString path)

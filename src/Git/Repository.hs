@@ -1,6 +1,7 @@
 module Git.Repository
   ( Repo, repoFilePath, openRepo
   , repoGitPath, repoConfigPath, repoObjectsPath, repoRefsPath, repoHeadPath
+  , repoIndexPath
   , RepoError(..)
   ) where
 
@@ -14,9 +15,10 @@ import System.Path.Directory (getDirectoryContents)
 
 newtype Repo = Repo {repoFilePath :: Path.AbsDir} deriving (Show)
 
-repoHeadPath, repoConfigPath :: Repo -> Path.AbsFile
+repoHeadPath, repoConfigPath, repoIndexPath :: Repo -> Path.AbsFile
 repoConfigPath repo = repoGitPath repo </> configPath
 repoHeadPath repo = repoGitPath repo </> headPath
+repoIndexPath repo = repoGitPath repo </> indexPath
 
 repoGitPath, repoObjectsPath, repoRefsPath :: Repo -> Path.AbsDir
 repoGitPath repo = repoFilePath repo </> gitPath
@@ -42,9 +44,10 @@ openRepo path =
         ]
       then return repo else die
 
-headPath, configPath :: Path.RelFile
+headPath, configPath, indexPath :: Path.RelFile
 headPath = Path.relFile "HEAD"
 configPath = Path.relFile "config"
+indexPath = Path.relFile "index"
 
 gitPath, objectsPath, refsPath :: Path.RelDir
 gitPath = Path.relDir ".git"

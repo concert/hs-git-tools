@@ -18,22 +18,25 @@ import Data.Attoparsec.ByteString.Lazy (Result(..), parse)
 import Data.Attoparsec.Binary (anyWord32be, anyWord64be)
 import qualified Data.Attoparsec.Internal.Types as ApIntern
 import Data.Bifunctor (first)
+import Data.Bits (Bits, (.&.), (.|.), zeroBits, shiftL)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Internal as BSIntern
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Foldable (foldl')
-import Data.List (intercalate)
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8)
+import Data.List (intercalate, break)
 import Data.Time (TimeZone, ZonedTime, utcToZonedTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
+import qualified System.Path as Path
+import System.Path.PartClass (FileDir, AbsRel)
 
 import Git.Types.Error (GitError(..))
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
+
 
 instance MonadFail (Either String) where
   fail = Left
@@ -123,8 +126,8 @@ takeFor size p = do
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
-nullTermStringP :: Parser Text
-nullTermStringP = decodeUtf8 <$> takeTill' (== '\NUL')
+nullTermStringP :: Parser String
+nullTermStringP = Char8.unpack <$> takeTill' (== '\NUL')
 
 char_ :: Char -> Parser ()
 char_ = void . char
@@ -139,5 +142,30 @@ oct = numberValue <$> many1 (satisfyMap "digit" digitToInt) <?> "octal"
       if (fromIntegral dig :: Word) < 8 then Just dig else Nothing
     numberValue = foldl' (\acc -> ((8 * acc) +)) 0
 
+lowMask :: (Bits a, Num a) => a -> Int -> a
+lowMask bits n = bits .&. (2 ^ n - 1)
+
+assembleBits :: (Bits a, Num a) => [(Int, a)] -> a
+assembleBits = go zeroBits
+ where
+   go acc [] = acc
+   go acc ((len, a):las) = go (shiftL acc len .|. lowMask a len) las
+
 toZonedTime :: POSIXTime -> TimeZone -> ZonedTime
 toZonedTime pt tz = utcToZonedTime tz $ posixSecondsToUTCTime pt
+
+-- | Split a list into chunks whenever the predicate succeeds on an item.
+--   Consumes the matching item and treats consecutive items as a single match.
+splitWhen :: (a -> Bool) -> [a] -> [[a]]
+splitWhen p l = case break p l of
+  (h, []) -> [h]
+  ([], _:t) -> splitWhen p t
+  (h, t) -> h : splitWhen p t
+
+splitOn :: Eq a => a -> [a] -> [[a]]
+splitOn a = splitWhen (== a)
+
+-- Yes, it's shame that we can't just grab the internal list that Path.Path
+-- uses :-(
+pathToList :: (AbsRel ar, FileDir fd) => Path.Path ar fd -> [String]
+pathToList = splitOn Path.pathSeparator . Path.toString

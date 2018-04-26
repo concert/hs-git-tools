@@ -1,5 +1,6 @@
 {-# LANGUAGE
     BinaryLiterals
+  , DeriveFoldable
   , DeriveFunctor
 #-}
 
@@ -9,6 +10,7 @@ import Prelude hiding (fail)
 
 import Control.Monad.Fail (MonadFail(..))
 import Data.Bits ((.&.), shiftR)
+import Data.Foldable (foldl')
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
@@ -42,7 +44,19 @@ versionFromWord32 :: MonadFail m => Word32 -> m IndexVersion
 versionFromWord32 w = maybe (fail "Unsupported index version") return $
   lookup w [(versionToWord32 v, v) | v <- [minBound..]]
 
-data Flag = AssumeValid | SkipWorkTree | IntentToAdd deriving (Show, Eq, Ord)
+data Flag
+  = AssumeValid | SkipWorkTree | IntentToAdd
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+flagMinVersion :: Flag -> IndexVersion
+flagMinVersion f = case f of
+  AssumeValid -> minBound
+  SkipWorkTree -> Version3
+  IntentToAdd -> Version3
+
+flagsMinVersion :: Set Flag -> IndexVersion
+flagsMinVersion = foldl' (\v f -> max v $ flagMinVersion f) minBound
+
 data Stage
   = StageNormal | StageBase | StageHead | StageIncoming
   deriving (Show, Eq, Ord, Enum, Bounded)
@@ -64,7 +78,7 @@ data Stages a
   | BothEdited {ssBase :: a, ssHead :: a, ssIncoming :: a}
   | RmEdited {ssBase :: a, ssIncoming :: a}
   | EditedRm {ssBase :: a, ssHead :: a}
-  deriving (Show, Functor)
+  deriving (Show, Functor, Foldable)
 
 stagesToMap :: Stages a -> Map Stage a
 stagesToMap ses = case ses of
@@ -97,6 +111,9 @@ mapToStages m =
 -- FIXME: I'm not sure index entries can ever be directories...
 type IndexEntries = Map Path.RelFileDir (Stages IndexEntry)
 
+iesMinVersion :: IndexEntries -> IndexVersion
+iesMinVersion ies = (foldl' . foldl') max minBound $ fmap ieMinVersion <$> ies
+
 data GitFileStat
   = GitFileStat
   { gfsMetaDataChangedAt :: POSIXTime
@@ -118,6 +135,9 @@ data IndexEntry
   , ieSha1 :: Sha1
   , ieFlags :: Set Flag
   } deriving (Show, Eq)
+
+ieMinVersion :: IndexEntry -> IndexVersion
+ieMinVersion = flagsMinVersion . ieFlags
 
 gfsFromStat :: MonadFail m => FileStatus -> m GitFileStat
 gfsFromStat fs = do

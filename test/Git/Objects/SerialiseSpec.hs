@@ -10,9 +10,12 @@ import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 
+import Control.Monad (replicateM)
 import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
+import Data.List (intercalate)
 import qualified Data.Map as Map
 import Data.Monoid ((<>))
 import Data.Proxy
@@ -22,9 +25,10 @@ import Data.Time
   ( ZonedTime(..), TimeOfDay(..), LocalTime(..), TimeZone(..)
   , Day(ModifiedJulianDay), utcToZonedTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import qualified System.Path as Path
 
 import Git.Internal (Wrapable(..), tellParsePos)
-import Git.Types (FileMode(..))
+import Git.Types (FileMode(..), legalPathComponent)
 import Git.Objects
   (GitObject(gitObjectType), Object
   , Commit(..), Blob(..), Tree(..), TreeRow(..))
@@ -178,13 +182,28 @@ tree_56558e32 = TestObject
       , r Directory "test" "64f75c4cf8200e810c03471d4830a02db193237b"
       ]
   where
-    r mode name sha = (name, TreeRow mode (sha1 sha))
+    r mode name sha = (Path.rel name, TreeRow mode (sha1 sha))
 
 instance Arbitrary Tree where
   arbitrary = Tree . Map.fromList <$> listOf rowPair
     where
-      rowPair = (,) <$> nonNull <*> arbitrary
-      nonNull = Text.filter (/= '\NUL') <$> arbitrary
+      rowPair = (,) <$> arbitraryGitPath <*> arbitrary
+
+smallListOf1 :: Gen a -> Gen [a]
+smallListOf1 g = do
+  l <- choose (1, 5)
+  replicateM l g
+
+arbitraryGitPath :: Gen Path.RelFileDir
+arbitraryGitPath = Path.rel . intercalate "/" <$> comps
+  where
+    name = oneof $ pure <$> ["foo", "bar", "baz", "qux"]
+    ext = oneof $ pure <$> ["hs", "py", "sh", "txt"]
+    dotted g = frequency [(3, g), (1, ("." ++) <$> g)]
+    exted g = oneof [g, (\a b -> a ++ "." ++ b) <$> g <*> ext]
+    comps = (\l i -> l ++ [i]) <$> smallListOf1 (dotted name)
+      <*> oneof [dotted name, exted $ dotted name]
+
 
 instance Arbitrary TreeRow where
   arbitrary = TreeRow <$> arbitraryBoundedEnum <*> arbitrary

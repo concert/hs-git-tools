@@ -12,7 +12,8 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
   (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
-import Data.Bits (Bits, (.&.), shiftR, testBit)
+import Data.Bits ((.&.), shiftR, testBit)
+import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
 import Data.Monoid ((<>))
@@ -21,7 +22,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import Data.Text.Encoding (decodeUtf8)
 import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
@@ -30,10 +30,12 @@ import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Pack (chunkNumBeP)
-import Git.Internal (lazyParseOnly, nullTermStringP, tellParsePos)
-import Git.Sha1 (sha1ByteStringParser)
-import Git.Types (FileMode, fileModeFromInt, GitError(..))
-import Git.Index.Extensions (extensionP, CachedTree(..), ResolveUndo(..))
+import Git.Internal
+  (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
+import Git.Sha1 (sha1ByteStringParser, sha1Size)
+import Git.Types (FileMode, fileModeFromInt, GitError(..), checkPath)
+import Git.Index.Extensions
+  (IndexExtension(..), extensionP, CachedTree(..), ResolveUndo(..))
 import Git.Index.Index (Index(..))
 
 import Git.Index.Types
@@ -51,15 +53,18 @@ openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
 openIndex path = do
   content <- liftIO $ openBinaryFile path ReadMode >>=
     LBS.hGetContents
-  either (throwError . ParseError) return $
-    lazyParseOnly (indexP <* endOfInput) content
+  either (throwError . ParseError) return $ parseIndex content
+
+parseIndex :: LBS.ByteString -> Either String Index
+parseIndex lbs = lazyParseOnly (indexP <* endOfInput) $
+  LBS.take (LBS.length lbs - fromIntegral sha1Size) lbs
 
 indexP :: Parser Index
 indexP = do
   (version, numEntries) <- headerP
   entries <- indexEntriesP version numEntries
   (ct, ru) <- extensionsP
-  _ <- sha1ByteStringParser
+  -- _ <- sha1ByteStringParser
   return $ Index version entries ct ru
 
 headerP :: Parser (IndexVersion, Word32)
@@ -71,7 +76,8 @@ headerP = do
 
 indexEntriesP :: IndexVersion -> Word32 -> Parser IndexEntries
 indexEntriesP version numEntries =
-    go (Path.rel "") numEntries >>= mapM mapToStages . momFromList
+    go (Path.toFileDir Path.emptyFile) numEntries >>=
+    mapM mapToStages . momFromList
   where
     go _ 0 = return []
     go prevPath ne = do
@@ -89,6 +95,7 @@ entryP version prevPath = do
     path <- case version of
           Version4 -> v4PathP prevPath
           _ -> v2_3PathP <* padding startPos
+    checkPath path
     return ((path, stage), IndexEntry gfs sha1 flags)
   where
     padding startPos = do
@@ -109,10 +116,11 @@ gfsP = do
   return $ GitFileStat ctime mtime devId inodeNo mode uid gid size
 
 posixTimeP :: Parser POSIXTime
-posixTimeP = do
-  seconds <- fromIntegral <$> anyWord32be
-  nanofrac <- anyWord32be
-  return $ systemToPOSIXTime $ MkSystemTime seconds nanofrac
+posixTimeP = mkPosixTime <$> anyWord32be <*> anyWord32be
+
+mkPosixTime :: Word32 -> Word32 -> POSIXTime
+mkPosixTime seconds nanofrac =
+  systemToPOSIXTime $ MkSystemTime (fromIntegral seconds) nanofrac
 
 fileModeP :: Parser FileMode
 fileModeP = anyWord32be >>= fileModeFromInt . fromIntegral
@@ -142,16 +150,13 @@ flagsP version = do
         <> (flag IntentToAdd $ testBit bits 13)
 
 v2_3PathP :: Parser Path.RelFileDir
-v2_3PathP = Path.rel . Text.unpack . decodeUtf8 <$> takeTill (== 0)
+v2_3PathP = Path.rel . Char8.unpack <$> takeTill (== 0)
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
   cut <- fromIntegral <$> chunkNumBeP
   new <- nullTermStringP
-  return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> new
-
-lowMask :: (Bits a, Num a) => a -> Int -> a
-lowMask bits n = bits .&. 2 ^ n - 1
+  return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> Text.pack new
 
 momFromList :: (Ord k1, Ord k2) => [((k1, k2), v)] -> Map k1 (Map k2 v)
 momFromList = foldl' f mempty
@@ -174,7 +179,7 @@ singleExtP =
 
 extensionsP :: Parser (CachedTree, ResolveUndo)
 extensionsP =
-    foldl' f (CachedTree mempty, ResolveUndo mempty) <$> many' singleExtP
+    foldl' f (extEmpty, extEmpty) <$> many' singleExtP
   where
     f x NoExt = x
     f (_, ru) (ExtCachedTree ct) = (ct, ru)
