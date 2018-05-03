@@ -25,6 +25,7 @@ data GitError
   | FailedPostDeltaApplicationLengthCheck Int Word64
 
   | UnsupportedIndexVersion
+  | CannotStatFile String
   deriving Eq
 
 instance Show GitError where
@@ -48,5 +49,6 @@ instance Show GitError where
       actual expected
 
     UnsupportedIndexVersion -> "Unsupported index version"
+    CannotStatFile s -> "Can't stat file: " ++ s
 
 instance Exception GitError

@@ -17,6 +17,7 @@ import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
 import Foreign.Marshal.Utils (fromBool)
 import qualified System.Path as Path
+import System.Path.IO (withBinaryFile, IOMode(..))
 
 import Git.Internal (assembleBits)
 import Git.Sha1 (Sha1(..))
@@ -29,7 +30,8 @@ import Git.Index.Types
 
 
 writeIndex :: Path.AbsFile -> Index -> IO ()
-writeIndex path idx = undefined
+writeIndex path idx = withBinaryFile path WriteMode $ \h ->
+  LBS.hPut h $ indexLbs idx
 
 indexLbs :: Index -> LBS.ByteString
 indexLbs idx = let lbs = toLazyByteString $ indexB idx in
