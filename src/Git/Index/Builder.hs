@@ -4,8 +4,8 @@ import Blaze.ByteString.Builder
   ( Builder, fromByteString, fromWord16be, fromWord32be, toByteString
   , toLazyByteString)
 import Crypto.Hash.SHA1 as SHA1
-import Data.Bits (Bits, (.|.), shiftR, bit)
 import qualified Data.ByteString as BS
+import Data.ByteString.Builder.VarWord (denseVarWordBe)
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
@@ -18,7 +18,7 @@ import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
 import Foreign.Marshal.Utils (fromBool)
 import qualified System.Path as Path
 
-import Git.Internal (lowMask, assembleBits)
+import Git.Internal (assembleBits)
 import Git.Sha1 (Sha1(..))
 import Git.Types (fileModeToInt)
 import Git.Index.Extensions.Class (extensionB)
@@ -61,8 +61,7 @@ sieB v prevPath path stages = Map.foldlWithKey' f (prevPath, mempty) $ stagesToM
           Version4 -> encodePathV4 pp path
           _ -> Char8.pack path
         builder' = pad $ gfsB gfs <> fromByteString (unSha1 sha1)
-          <> flagsB (BS.length pathBs) stage flags
-          <> fromByteString pathBs
+          <> flagsB (BS.length pathBs) stage flags <> fromByteString pathBs
       in
         (path, builder <> builder')
     pad = case v of
@@ -118,17 +117,7 @@ encodePathV4 s1 s2 = case Text.commonPrefixes t1 t2 of
   where
     t1 = Text.pack s1
     t2 = Text.pack s2
-    f common newSuffix = chunkNumBs (Text.length t1 - Text.length common)
-      <> Char8.pack (Text.unpack newSuffix) <> Char8.singleton '\NUL'
-
-chunkNumBs :: (Integral a, Bits a) => a -> BS.ByteString
-chunkNumBs = inner False
-  where
-    inner prevCont n =
-      let
-        rest = shiftR n 7
-        bits = fromIntegral $ lowMask n 7
-        continue = rest > 0
-        byte = if prevCont then bit 7 .|. bits else bits
-      in
-        (if continue then inner True (rest - 1) else "") <> BS.singleton byte
+    f common newSuffix =
+         toByteString (denseVarWordBe $ Text.length t1 - Text.length common)
+      <> Char8.pack (Text.unpack newSuffix)
+      <> Char8.singleton '\NUL'

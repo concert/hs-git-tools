@@ -1,5 +1,5 @@
 module Git.Repository
-  ( Repo, repoFilePath, openRepo
+  ( Repo, repoFilePath, openRepo, openRepo'
   , repoGitPath, repoConfigPath, repoObjectsPath, repoRefsPath, repoHeadPath
   , repoIndexPath
   , RepoError(..)
@@ -7,7 +7,7 @@ module Git.Repository
 
 import Control.Exception (try, throwIO)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Except (ExceptT, throwError)
+import Control.Monad.Except (ExceptT, throwError, runExceptT)
 import System.IO.Error (isDoesNotExistError)
 import qualified System.Path as Path
 import System.Path ((</>))
@@ -26,6 +26,10 @@ repoObjectsPath repo = repoGitPath repo </> objectsPath
 repoRefsPath repo = repoGitPath repo </> refsPath
 
 data RepoError = NotAGitRepo Path.AbsDir deriving Show
+
+openRepo' :: FilePath -> IO Repo
+openRepo' = fmap (either (error . show) id) . runExceptT
+  . openRepo . Path.absDir
 
 openRepo :: Path.AbsDir -> ExceptT RepoError IO Repo
 openRepo path =
