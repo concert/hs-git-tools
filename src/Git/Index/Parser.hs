@@ -12,6 +12,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
   (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
+import Data.Attoparsec.VarWord (denseVarWordBe)
 import Data.Bits ((.&.), shiftR, testBit)
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
@@ -29,7 +30,6 @@ import qualified System.Path as Path
 import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
-import Git.Pack (chunkNumBeP)
 import Git.Internal
   (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
 import Git.Sha1 (sha1ByteStringParser, sha1Size)
@@ -154,7 +154,7 @@ v2_3PathP = Path.rel . Char8.unpack <$> takeTill (== 0)
 
 v4PathP :: Path.RelFileDir -> Parser Path.RelFileDir
 v4PathP prevPath = let prevPathT = Text.pack $ Path.toString prevPath in do
-  cut <- fromIntegral <$> chunkNumBeP
+  cut <- denseVarWordBe
   new <- nullTermStringP
   return $ Path.rel $ Text.unpack $ Text.dropEnd cut prevPathT <> Text.pack new
 

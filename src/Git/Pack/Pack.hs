@@ -15,6 +15,8 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.ByteString
   (Parser, parseOnly, string, (<?>), anyWord8, take, many1, peekWord8')
 import Data.Attoparsec.Binary (anyWord32be)
+import Data.Attoparsec.VarWord (denseVarWordBe, varWordLe)
+import Data.Attoparsec.VarWord.Internal (varWordLe')
 import Data.Bits (Bits, (.&.), (.|.), shiftR, shiftL, testBit)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -117,49 +119,10 @@ objHeadP = do
   ty <- decodePackObjectType $ shiftR (byte1 .&. 0b01110000) 4
   let lenTail = fromIntegral $ byte1 .&. 0b00001111
   len <- if msb byte1
-    then chunkNumLeP' 4 lenTail
+    then varWordLe' 4 lenTail
     else return lenTail
   pos <- tellParsePos
   return (ty, fromIntegral $ pos - startPos, len)
-
--- | A Parser for numbers stored in byte-size chunks, with the MSB of each byte
---   indicating that a further byte should be read and the least significant 7
---   bits being the number data. The bytes are read in little-endian format
---   (i.e. the first chunk we read becomes the least significant part of the
---   output).
-chunkNumLeP' :: Int -> Word64 -> Parser Word64
-chunkNumLeP' shiftBy acc = do
-  byte <- anyWord8
-  let acc' = acc + shiftL (fromIntegral $ lsbs byte) shiftBy
-  if msb byte
-    then chunkNumLeP' (shiftBy + 7) acc'
-    else return acc'
-
--- | The same as chunkNumLeP', but doesn't take an initialisation value for the
---   accumulator.
-chunkNumLeP :: Parser Word64
-chunkNumLeP = chunkNumLeP' 0 0
-
--- | A Parser for numbers stored in byte-size chunks, with the MSB of each byte
---   indicating that a further byte should be read, and the least significant 7
---   bits being the number data. The bytes are read in big-endian format (i.e.
---   the first chunk we read becomes the most significant part of the output).
---
---   NB. It also does a weird thing with adding one to all but the last byte!
-chunkNumBeP' :: Word64 -> Parser Word64
-chunkNumBeP' acc = do
-  byte <- anyWord8
-  let acc' = shiftL acc 7 + fromIntegral (lsbs byte)
-  if msb byte
-    -- NB: WFT is this + 1 about? the canonical git source has it...
-    -- https://github.com/git/git/blob/master/packfile.c#L1043
-    then chunkNumBeP' (acc' + 1)
-    else return acc'
-
--- | The same as chunkNumBeP, but doesn't take an initialisation value for the
---   accumulator.
-chunkNumBeP :: Parser Word64
-chunkNumBeP = chunkNumBeP' 0
 
 deltaInsP :: Parser DeltaInstruction
 deltaInsP = do
@@ -203,8 +166,8 @@ deltaInsP = do
 
 deltaBodyP :: Parser DeltaBody
 deltaBodyP = do
-  sourceLen <- chunkNumLeP
-  targetLen <- chunkNumLeP
+  sourceLen <- varWordLe
+  targetLen <- varWordLe
   inss <- many1 deltaInsP
   return $ DeltaBody sourceLen targetLen inss
 
@@ -220,7 +183,8 @@ parseRefDelta inflatedSize bs =
 
 parseOfsDelta :: (Integral i, MonadFail m) => i -> BS.ByteString -> m OfsDelta
 parseOfsDelta inflatedSize bs = do
-    (consumed, negOfs) <- either fail return $ parseOnly (withPos chunkNumBeP) bs
+    (consumed, negOfs) <- either fail return $
+      parseOnly (withPos denseVarWordBe) bs
     db <- lazyParseOnly deltaBodyP $ LBS.take (fromIntegral inflatedSize) $
       Zlib.decompress $ LBS.fromStrict $ BS.drop consumed bs
     return $ OfsDelta negOfs db

@@ -6,17 +6,11 @@
 module Git.Index.BuilderSpec where
 
 import Test.Hspec
-import Test.QuickCheck
 
-import Data.Attoparsec.ByteString (parseOnly, endOfInput)
-import qualified Data.ByteString as BS
 import qualified Data.Map as Map
-import Data.Word
 import qualified System.Path as Path
 
-import Git.Pack.Pack (chunkNumBeP)
-
-import Git.Index.Builder (indexLbs, chunkNumBs, encodePathV4)
+import Git.Index.Builder (indexLbs, encodePathV4)
 import Git.Index.Index (Index(..), index)
 import Git.Index.Types
   (IndexVersion(..), IndexEntry(..), gitFileStat, Stages(..))
@@ -36,16 +30,6 @@ spec = do
         }
     in
       bs `shouldBe` v2ConflictIndex
-
-  describe "chunkNumBs" $ do
-    it "should encode a small number correctly" $
-      chunkNumBs @Int 7  `shouldBe` BS.singleton 0b00000111
-    it "should encode a large number correctly" $
-      chunkNumBs @Int 32769 `shouldBe`
-        BS.pack [0b10000000, 0b11111111, 0b00000001]
-    it "should roundtrip" $ property $ \n ->
-      parseOnly (chunkNumBeP <* endOfInput) (chunkNumBs @Word64 n)
-        `shouldBe` Right n
 
   describe "encodePathV4" $ do
     it "should return the path if given no previous path" $
