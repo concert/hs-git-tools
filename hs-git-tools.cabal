@@ -62,6 +62,7 @@ library
     , Git.Index.Index
     , Git.Index.Parser
     , Git.Index.Types
+    , Git.Index.Update
     , Git.Internal
     , Git.Objects
     , Git.Objects.Blob
