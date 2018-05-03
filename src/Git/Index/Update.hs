@@ -8,7 +8,7 @@ module Git.Index.Update where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), ExceptT(..), runExceptT)
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (ReaderT(..))
+import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.State (MonadState(..), StateT(..))
 import qualified Data.Map as Map
 import Data.Tagged (unTagged)
@@ -43,9 +43,11 @@ withIndex repo im = let path = repoIndexPath repo in do
 
 
 updateIndex
-  :: (MonadIO m, MonadError GitError m, MonadState Index m)
-  => Repo -> Path.RelFile -> m ()
-updateIndex repo relpath = do
+  :: (MonadIO m, MonadError GitError m, MonadState Index m, MonadReader Repo m)
+  => Path.RelFile -> m ()
+updateIndex relpath = do
+    repo <- ask
+    let abspath = repoFilePath repo </> relpath
     stat <- liftIO $ getFileStatus $ Path.toString abspath
     workingGfs <- either (throwError . CannotStatFile) return $ gfsFromStat stat
     idx <- get
@@ -54,7 +56,6 @@ updateIndex repo relpath = do
       let stages = Normal $ IndexEntry workingGfs (unTagged sha1) mempty
       put $ insertIdxEntry (Path.toFileDir relpath) stages idx
   where
-    abspath = repoFilePath repo </> relpath
     getIdxGfs idx = gfsFromIndex (Path.toFileDir relpath) idx >>= \case
       Normal ie -> Just ie
       _ -> Nothing
