@@ -9,6 +9,7 @@ module Git.Internal where
 
 import Prelude hiding (fail)
 
+import Control.Applicative ((<|>))
 import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Except (ExceptT(..), MonadError, throwError, runExceptT)
@@ -125,6 +126,12 @@ takeFor size p = do
 
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
+
+maybeP :: Parser a -> Parser (Maybe a)
+maybeP p = (Just <$> p) <|> return Nothing
+
+parses :: Parser a -> Parser Bool
+parses p = (const True <$> p) <|> return False
 
 nullTermStringP :: Parser String
 nullTermStringP = Char8.unpack <$> takeTill' (== '\NUL')
