@@ -4,15 +4,44 @@ import Control.Applicative ((<|>))
 import Control.Monad (replicateM_)
 import Data.Attoparsec.ByteString.Char8
   ( Parser, anyChar, char, eitherP, many', many1, peekChar, satisfy, sepBy1
-  , takeTill)
+  , takeTill, sepBy', inClass)
 import qualified Data.ByteString.Char8 as Char8
 import Data.Monoid ((<>))
+import Data.Foldable ()
+import qualified System.Path as Path
+import System.Path.PartClass (AbsRel)
 
-import Git.Internal (char_, parses)
+import Git.Internal (char_, parses, SwitchFileDir)
 
 import Git.Index.Glob
   ( DirectoryIgnorePattern(..), DoubleStar(..), Glob(..), GlobPart(..)
-  , specialChars)
+  , specialChars, matchGlobPath)
+
+newtype Ignores = Ignores [IgnorePattern]
+
+gitIgnoreParser :: Parser Ignores
+gitIgnoreParser = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
+
+data DoIgnore
+  = DiIgnore
+  | DiInclude
+  | DiUnspecified
+
+diCombine :: DoIgnore -> DoIgnore -> DoIgnore
+diCombine a b = case b of
+    DiIgnore -> DiIgnore
+    DiInclude -> DiInclude
+    DiUnspecified -> a
+
+ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> DoIgnore
+ignoramus igP path = case igP of
+    Ignore pat -> if matchGlobPath pat path then DiIgnore else DiUnspecified
+    DontIgnore pat -> if matchGlobPath pat path then DiInclude else DiUnspecified
+
+ignore :: (AbsRel ar, SwitchFileDir fd) => Ignores -> Path.Path ar fd -> Bool
+ignore (Ignores patterns) path = case foldl diCombine DiInclude $ flip ignoramus path <$> patterns of
+    DiInclude -> False
+    _ -> True
 
 data IgnorePattern
   = Ignore DirectoryIgnorePattern

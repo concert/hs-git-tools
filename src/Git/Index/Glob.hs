@@ -1,7 +1,7 @@
 module Git.Index.Glob
   ( DirectoryIgnorePattern(..), DoubleStar(..), Glob(..), glob, GlobPart(..)
   , specialChars, star, matchGlob, escape, condenseConsecutive
-  , checkPathComponents
+  , checkPathComponents, matchGlobPath
   ) where
 
 import Control.Applicative ((<|>))
