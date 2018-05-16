@@ -24,6 +24,8 @@ spec = do
   describe "condenseConsecutive" $ do
     it "should eliminate required consecutive elements" $
       condenseConsecutive 'a' "aabbababbaa" `shouldBe` "abbababba"
+    it "should leave a 1 element list as is" $ do
+      condenseConsecutive 'a' "a" `shouldBe` "a"
 
   describe "star Parser" $ let p = star $ char 'z' in do
     it "should parse terminated empty string" $

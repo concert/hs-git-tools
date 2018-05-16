@@ -57,17 +57,12 @@ globPartToString gp = case gp of
 escape :: Char -> String
 escape c = if c `elem` specialChars || c == '\\' then '\\' : [c] else [c]
 
-window :: [a] -> [(a, a)]
-window [] = []
-window [_] = []
-window (a1:l@(a2:_)) = (a1, a2) : window l
-
 condenseConsecutive :: Eq a => a -> [a] -> [a]
-condenseConsecutive x = unwindow . filter (/= (x,x)) . window
-  where
-    unwindow [] = []
-    unwindow [(a1, a2)] = [a1, a2]
-    unwindow ((a1, _):l) = a1 : unwindow l
+condenseConsecutive x xs = case xs of
+    (x0:x1:xs') -> if (x0, x1) == (x, x)
+        then condenseConsecutive x $ x1 : xs'
+        else x0 : (condenseConsecutive x $ x1 : xs')
+    _ -> xs
 
 matchGlobPath
   :: (AbsRel ar, SwitchFileDir fd)
