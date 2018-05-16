@@ -13,7 +13,6 @@ import Test.QuickCheck.Instances ()
 import Control.Monad (replicateM)
 import Data.Attoparsec.ByteString (parseOnly, string, endOfInput)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as Char8
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
 import qualified Data.Map as Map
@@ -28,7 +27,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import qualified System.Path as Path
 
 import Git.Internal (Wrapable(..), tellParsePos)
-import Git.Types (FileMode(..), legalPathComponent)
+import Git.Types (FileMode(..))
 import Git.Objects
   (GitObject(gitObjectType), Object
   , Commit(..), Blob(..), Tree(..), TreeRow(..))
@@ -189,10 +188,13 @@ instance Arbitrary Tree where
     where
       rowPair = (,) <$> arbitraryGitPath <*> arbitrary
 
-smallListOf1 :: Gen a -> Gen [a]
-smallListOf1 g = do
-  l <- choose (1, 5)
+listOf' :: Int -> Int -> Gen a -> Gen [a]
+listOf' lo hi g = do
+  l <- choose (lo, hi)
   replicateM l g
+
+smallListOf1 :: Gen a -> Gen [a]
+smallListOf1 = listOf' 1 5
 
 arbitraryGitPath :: Gen Path.RelFileDir
 arbitraryGitPath = Path.rel . intercalate "/" <$> comps

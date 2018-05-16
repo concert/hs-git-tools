@@ -32,6 +32,7 @@ import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 import qualified System.Path as Path
+import qualified System.Path.Part as Part
 import System.Path.PartClass (FileDir, AbsRel)
 
 import Git.Types.Error (GitError(..))
@@ -176,3 +177,12 @@ splitOn a = splitWhen (== a)
 -- uses :-(
 pathToList :: (AbsRel ar, FileDir fd) => Path.Path ar fd -> [String]
 pathToList = splitOn Path.pathSeparator . Path.toString
+
+class FileDir fd => SwitchFileDir fd where
+  switchFileDir
+    :: (p Part.File -> a) -> (p Part.Dir -> a) -> (p Part.FileDir -> a)
+    -> p fd -> a
+
+instance SwitchFileDir Part.File where switchFileDir f _ _ p = f p
+instance SwitchFileDir Part.Dir where switchFileDir _ f _ p = f p
+instance SwitchFileDir Part.FileDir where switchFileDir _ _ f p = f p

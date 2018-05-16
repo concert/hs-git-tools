@@ -15,6 +15,7 @@ import Data.Tagged (unTagged)
 import System.Posix.Files (getFileStatus)
 import qualified System.Path as Path
 import System.Path ((</>))
+import System.Path.Directory (relDirectoryContents)
 
 import Git.Types (GitError(..))
 import qualified Git.Objects.Blob as Blob
@@ -59,6 +60,16 @@ updateIndex relpath = do
     getIdxGfs idx = gfsFromIndex (Path.toFileDir relpath) idx >>= \case
       Normal ie -> Just ie
       _ -> Nothing
+
+updateIndexDir
+  :: (MonadIO m, MonadError GitError m, MonadState Index m, MonadReader Repo m)
+  => Path.RelDir -> m ()
+updateIndexDir relPath = do
+  repo <- ask
+  (dirs, files) <- liftIO $ relDirectoryContents $ repoFilePath repo </> relPath
+  mapM_ updateIndex files
+  -- FIXME: .gitignore! Also need to ignore .git
+  mapM_ updateIndexDir $ fmap (relPath </>) $ dirs
 
 shouldUpdateContent :: GitFileStat -> GitFileStat -> Bool
 shouldUpdateContent workingGfs idxGfs =
