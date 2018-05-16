@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Git.Index.Ignore where
 
 import Control.Applicative ((<|>))
@@ -17,10 +19,10 @@ import Git.Index.Glob
   ( DirectoryIgnorePattern(..), DoubleStar(..), Glob(..), GlobPart(..)
   , specialChars, matchGlobPath)
 
-newtype Ignores = Ignores [IgnorePattern]
+newtype Ignores = Ignores [IgnorePattern] deriving Monoid
 
-gitIgnoreParser :: Parser Ignores
-gitIgnoreParser = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
+ignoresP :: Parser Ignores
+ignoresP = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
 
 data DoIgnore
   = DiIgnore

@@ -16,7 +16,11 @@ import System.Posix.Files (getFileStatus)
 import qualified System.Path as Path
 import System.Path ((</>))
 import System.Path.Directory (relDirectoryContents)
+import System.Path.IO (openBinaryFile, IOMode(ReadMode))
+import qualified Data.ByteString.Lazy as LBS
+import Data.Attoparsec.ByteString (Parser, endOfInput)
 
+import Git.Internal (lazyParseOnly)
 import Git.Types (GitError(..))
 import qualified Git.Objects.Blob as Blob
 import Git.Repository (Repo(..), repoIndexPath)
@@ -27,6 +31,7 @@ import Git.Index.Index (Index(..), gfsFromIndex)
 import Git.Index.Parser (openIndex)
 import Git.Index.Types
   (Stages(..), IndexEntry(..), IndexEntries, GitFileStat(..), gfsFromStat)
+import Git.Index.Ignore (ignore, Ignores, ignoresP)
 
 
 type IndexM m r = ExceptT GitError (ReaderT Repo (StateT Index m)) r
@@ -61,15 +66,30 @@ updateIndex relpath = do
       Normal ie -> Just ie
       _ -> Nothing
 
+parseContent :: (MonadIO m, MonadError GitError m) => Parser a -> Path.AbsFile -> m a
+parseContent parser path = do
+    content <- liftIO $ openBinaryFile path ReadMode >>= LBS.hGetContents
+    either (throwError . ParseError) return $ lazyParseOnly (parser <* endOfInput) content
+
+getIgnores :: (MonadIO m, MonadError GitError m) => [Path.RelFile] -> m Ignores
+getIgnores rps = case filter isGitIgnore rps of
+    [ignoreRelP] ->
+        liftIO (Path.makeAbsoluteFromCwd ignoreRelP) >>= parseContent ignoresP
+    _ -> pure mempty
+  where
+    isGitIgnore = (== Path.relPath ".gitignore") . Path.takeFileName
+
 updateIndexDir
   :: (MonadIO m, MonadError GitError m, MonadState Index m, MonadReader Repo m)
   => Path.RelDir -> m ()
 updateIndexDir relPath = do
   repo <- ask
   (dirs, files) <- liftIO $ relDirectoryContents $ repoFilePath repo </> relPath
-  mapM_ updateIndex files
-  -- FIXME: .gitignore! Also need to ignore .git
-  mapM_ updateIndexDir $ fmap (relPath </>) $ dirs
+  -- FIXME: Parent gitignores
+  ignores <- getIgnores files
+  mapM_ updateIndex $ filter (not . ignore ignores) files
+  -- FIXME: Also need to ignore .git
+  mapM_ updateIndexDir $ fmap (relPath </>) $ filter (not . ignore ignores) dirs
 
 shouldUpdateContent :: GitFileStat -> GitFileStat -> Bool
 shouldUpdateContent workingGfs idxGfs =
