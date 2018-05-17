@@ -5,12 +5,15 @@
 
 module Git.Index.Update where
 
+import Control.Exception (try, IOException)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), ExceptT(..), runExceptT)
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.State (MonadState(..), StateT(..))
 import qualified Data.Map as Map
+import Data.Monoid ((<>))
 import Data.Tagged (unTagged)
 import System.Posix.Files (getFileStatus)
 import qualified System.Path as Path
@@ -66,30 +69,40 @@ updateIndex relpath = do
       Normal ie -> Just ie
       _ -> Nothing
 
-parseContent :: (MonadIO m, MonadError GitError m) => Parser a -> Path.AbsFile -> m a
+parseContent :: MonadFail m => Parser a -> Path.AbsFile -> IO (m a)
 parseContent parser path = do
-    content <- liftIO $ openBinaryFile path ReadMode >>= LBS.hGetContents
-    either (throwError . ParseError) return $ lazyParseOnly (parser <* endOfInput) content
+    content <- openBinaryFile path ReadMode >>= LBS.hGetContents
+    pure $ lazyParseOnly (parser <* endOfInput) content
 
-getIgnores :: (MonadIO m, MonadError GitError m) => [Path.RelFile] -> m Ignores
-getIgnores rps = case filter isGitIgnore rps of
-    [ignoreRelP] ->
-        liftIO (Path.makeAbsoluteFromCwd ignoreRelP) >>= parseContent ignoresP
-    _ -> pure mempty
-  where
-    isGitIgnore = (== Path.relPath ".gitignore") . Path.takeFileName
+getIgnores :: (MonadIO m, MonadError GitError m) => Path.AbsDir -> m Ignores
+getIgnores dirP = do
+    eMfIgnores <- liftIO $ (
+        try $ parseContent ignoresP $ dirP </> Path.relFile ".gitignore"
+        :: IO (Either IOException (Either String Ignores)))
+    case eMfIgnores of
+        Left _ -> pure mempty  -- Failed to open .gitignore
+        Right mfIgnores -> either (throwError . ParseError) pure mfIgnores
 
 updateIndexDir
   :: (MonadIO m, MonadError GitError m, MonadState Index m, MonadReader Repo m)
   => Path.RelDir -> m ()
-updateIndexDir relPath = do
-  repo <- ask
-  (dirs, files) <- liftIO $ relDirectoryContents $ repoFilePath repo </> relPath
-  -- FIXME: Parent gitignores
-  ignores <- getIgnores files
-  mapM_ updateIndex $ filter (not . ignore ignores) files
-  -- FIXME: Also need to ignore .git
-  mapM_ updateIndexDir $ fmap (relPath </>) $ filter (not . ignore ignores) dirs
+updateIndexDir targetDir = do
+    repoRoot <- repoFilePath <$> ask
+    parentIgnores <- mapM getIgnores $ parentDirPaths repoRoot
+    addDirContents repoRoot (foldr (<>) mempty parentIgnores) targetDir
+  where
+    (_, targetSegs, _) = Path.splitPath $ Path.normalise targetDir
+    parentDirPaths repoRoot = snd $ foldr
+        (\seg (pp, acc) -> let p = pp </> seg in (p, p : acc))
+        (repoRoot, [])
+        (drop 1 $ reverse targetSegs)
+    addDirContents repoRoot parentIgnores relPath = do
+      (dirs, files) <- liftIO $ relDirectoryContents $ repoRoot </> relPath
+      dirIgnores <- getIgnores $ Path.makeAbsolute repoRoot relPath
+      let ignores = parentIgnores <> dirIgnores
+      mapM_ updateIndex $ filter (not . ignore ignores) files
+      -- FIXME: Also need to ignore .git
+      mapM_ (addDirContents repoRoot ignores) $ fmap (relPath </>) $ filter (not . ignore ignores) dirs
 
 shouldUpdateContent :: GitFileStat -> GitFileStat -> Bool
 shouldUpdateContent workingGfs idxGfs =
