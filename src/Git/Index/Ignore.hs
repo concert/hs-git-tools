@@ -24,25 +24,25 @@ newtype Ignores = Ignores [IgnorePattern] deriving Monoid
 ignoresP :: Parser Ignores
 ignoresP = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
 
-data DoIgnore
-  = DiIgnore
-  | DiInclude
-  | DiUnspecified
+data IgnoreAction
+  = IaIgnore
+  | IaInclude
+  | IaUnspecified
 
-diCombine :: DoIgnore -> DoIgnore -> DoIgnore
+diCombine :: IgnoreAction -> IgnoreAction -> IgnoreAction
 diCombine a b = case b of
-    DiIgnore -> DiIgnore
-    DiInclude -> DiInclude
-    DiUnspecified -> a
+    IaIgnore -> IaIgnore
+    IaInclude -> IaInclude
+    IaUnspecified -> a
 
-ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> DoIgnore
+ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> IgnoreAction
 ignoramus igP path = case igP of
-    Ignore pat -> if matchGlobPath pat path then DiIgnore else DiUnspecified
-    DontIgnore pat -> if matchGlobPath pat path then DiInclude else DiUnspecified
+    Ignore pat -> if matchGlobPath pat path then IaIgnore else IaUnspecified
+    DontIgnore pat -> if matchGlobPath pat path then IaInclude else IaUnspecified
 
 ignore :: (AbsRel ar, SwitchFileDir fd) => Ignores -> Path.Path ar fd -> Bool
-ignore (Ignores patterns) path = case foldl diCombine DiInclude $ flip ignoramus path <$> patterns of
-    DiInclude -> False
+ignore (Ignores patterns) path = case foldl diCombine IaInclude $ flip ignoramus path <$> patterns of
+    IaInclude -> False
     _ -> True
 
 data IgnorePattern
