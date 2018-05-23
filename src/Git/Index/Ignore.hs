@@ -9,6 +9,7 @@ import Data.Attoparsec.ByteString.Char8
   , takeTill, sepBy', inClass)
 import qualified Data.ByteString.Char8 as Char8
 import Data.Monoid ((<>))
+import Data.Maybe (mapMaybe)
 import Data.Foldable ()
 import qualified System.Path as Path
 import System.Path.PartClass (AbsRel)
@@ -27,23 +28,15 @@ ignoresP = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
 data IgnoreAction
   = IaIgnore
   | IaInclude
-  | IaUnspecified
+instance Monoid IgnoreAction where {mempty = IaInclude; mappend _ di = di}
 
-diCombine :: IgnoreAction -> IgnoreAction -> IgnoreAction
-diCombine a b = case b of
-    IaIgnore -> IaIgnore
-    IaInclude -> IaInclude
-    IaUnspecified -> a
-
-ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> IgnoreAction
+ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> Maybe IgnoreAction
 ignoramus igP path = case igP of
-    Ignore pat -> if matchGlobPath pat path then IaIgnore else IaUnspecified
-    DontIgnore pat -> if matchGlobPath pat path then IaInclude else IaUnspecified
+    Ignore pat -> if matchGlobPath pat path then Just IaIgnore else Nothing
+    DontIgnore pat -> if matchGlobPath pat path then Just IaInclude else Nothing
 
-ignore :: (AbsRel ar, SwitchFileDir fd) => Ignores -> Path.Path ar fd -> Bool
-ignore (Ignores patterns) path = case foldl diCombine IaInclude $ flip ignoramus path <$> patterns of
-    IaInclude -> False
-    _ -> True
+ignore :: (AbsRel ar, SwitchFileDir fd) => Ignores -> Path.Path ar fd -> IgnoreAction
+ignore (Ignores patterns) path = mconcat $ mapMaybe id $ flip ignoramus path <$> patterns
 
 data IgnorePattern
   = Ignore DirectoryIgnorePattern

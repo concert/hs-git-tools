@@ -34,7 +34,7 @@ import Git.Index.Index (Index(..), gfsFromIndex)
 import Git.Index.Parser (openIndex)
 import Git.Index.Types
   (Stages(..), IndexEntry(..), IndexEntries, GitFileStat(..), gfsFromStat)
-import Git.Index.Ignore (ignore, Ignores, ignoresP)
+import Git.Index.Ignore (ignore, Ignores, ignoresP, IgnoreAction(..))
 
 
 type IndexM m r = ExceptT GitError (ReaderT Repo (StateT Index m)) r
@@ -83,6 +83,11 @@ getIgnores dirP = do
         Left _ -> pure mempty  -- Failed to open .gitignore
         Right mfIgnores -> either (throwError . ParseError) pure mfIgnores
 
+dropLast :: [a] -> [a]
+dropLast [] = []
+dropLast [_] = []
+dropLast (x:xs) = x : dropLast xs
+
 updateIndexDir
   :: (MonadIO m, MonadError GitError m, MonadState Index m, MonadReader Repo m)
   => Path.RelDir -> m ()
@@ -92,17 +97,21 @@ updateIndexDir targetDir = do
     addDirContents repoRoot (foldr (<>) mempty parentIgnores) targetDir
   where
     (_, targetSegs, _) = Path.splitPath $ Path.normalise targetDir
-    parentDirPaths repoRoot = snd $ foldr
-        (\seg (pp, acc) -> let p = pp </> seg in (p, p : acc))
+    parentDirPaths repoRoot = snd $ foldl
+        (\(pp, acc) seg -> let p = pp </> seg in (p, p : acc))
         (repoRoot, [])
-        (drop 1 $ reverse targetSegs)
+        (dropLast targetSegs)
+    isIncluded i = case i of
+        IaInclude -> True
+        IaIgnore -> False
     addDirContents repoRoot parentIgnores relPath = do
       (dirs, files) <- liftIO $ relDirectoryContents $ repoRoot </> relPath
-      dirIgnores <- getIgnores $ Path.makeAbsolute repoRoot relPath
+      dirIgnores <- getIgnores $ repoRoot </> relPath
       let ignores = parentIgnores <> dirIgnores
-      mapM_ updateIndex $ filter (not . ignore ignores) files
+      mapM_ updateIndex $ filter (isIncluded . ignore ignores) files
       -- FIXME: Also need to ignore .git
-      mapM_ (addDirContents repoRoot ignores) $ fmap (relPath </>) $ filter (not . ignore ignores) dirs
+      mapM_ (addDirContents repoRoot ignores) $
+        fmap (relPath </>) $ filter (isIncluded . ignore ignores) dirs
 
 shouldUpdateContent :: GitFileStat -> GitFileStat -> Bool
 shouldUpdateContent workingGfs idxGfs =
