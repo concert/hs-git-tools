@@ -15,10 +15,6 @@ import Text.Printf (printf)
 
 import Git.Internal (SwitchFileDir(..), pathToList)
 
-import Debug.Trace
-
-ts s x = trace (s ++ " " ++ show x) x
-
 data DoubleStar = DoubleStar deriving (Show, Eq)
 
 data DirectoryIgnorePattern
