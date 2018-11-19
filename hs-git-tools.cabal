@@ -51,6 +51,7 @@ library
     , unix
     , utf8-string
     , zlib
+    , QuickCheck
   exposed-modules:
       Git
     , Git.Index
@@ -59,6 +60,8 @@ library
     , Git.Index.Extensions.CachedTree
     , Git.Index.Extensions.Class
     , Git.Index.Extensions.ResolveUndo
+    , Git.Index.Glob
+    , Git.Index.Ignore
     , Git.Index.Index
     , Git.Index.Parser
     , Git.Index.Types
@@ -91,7 +94,9 @@ executable hs-git-exe
   main-is: Main.hs
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -XOverloadedStrings
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
+  default-extensions:
+    OverloadedStrings
   build-depends:
       base >=4.7 && <5
     , hs-git-tools
@@ -129,6 +134,7 @@ test-suite hs-git-test
   other-modules:
       Git.InternalSpec
       Git.Index.BuilderSpec
+      Git.Index.GlobSpec
       Git.Index.ParserSpec
       Git.Index.RoundtripSpec
       Git.Objects.SerialiseSpec

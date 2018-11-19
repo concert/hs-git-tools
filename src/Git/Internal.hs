@@ -9,6 +9,7 @@ module Git.Internal where
 
 import Prelude hiding (fail)
 
+import Control.Applicative ((<|>))
 import Control.Monad (void)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Except (ExceptT(..), MonadError, throwError, runExceptT)
@@ -31,6 +32,7 @@ import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 import qualified System.Path as Path
+import qualified System.Path.Part as Part
 import System.Path.PartClass (FileDir, AbsRel)
 
 import Git.Types.Error (GitError(..))
@@ -126,6 +128,12 @@ takeFor size p = do
 takeTill' :: (Char -> Bool) -> Parser BS.ByteString
 takeTill' p = takeTill p <* anyWord8
 
+maybeP :: Parser a -> Parser (Maybe a)
+maybeP p = (Just <$> p) <|> return Nothing
+
+parses :: Parser a -> Parser Bool
+parses p = (const True <$> p) <|> return False
+
 nullTermStringP :: Parser String
 nullTermStringP = Char8.unpack <$> takeTill' (== '\NUL')
 
@@ -169,3 +177,12 @@ splitOn a = splitWhen (== a)
 -- uses :-(
 pathToList :: (AbsRel ar, FileDir fd) => Path.Path ar fd -> [String]
 pathToList = splitOn Path.pathSeparator . Path.toString
+
+class FileDir fd => SwitchFileDir fd where
+  switchFileDir
+    :: (p Part.File -> a) -> (p Part.Dir -> a) -> (p Part.FileDir -> a)
+    -> p fd -> a
+
+instance SwitchFileDir Part.File where switchFileDir f _ _ p = f p
+instance SwitchFileDir Part.Dir where switchFileDir _ f _ p = f p
+instance SwitchFileDir Part.FileDir where switchFileDir _ _ f p = f p
