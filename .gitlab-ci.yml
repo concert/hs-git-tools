@@ -1,0 +1,38 @@
+image: haskell:8.6.3
+
+build:
+  variables:
+    STACK: >-
+      stack
+      --no-terminal
+      --stack-root ${CI_PROJECT_DIR}/.stack-root
+      --work-dir .stack-work
+  before_script:
+    - mkdir -p .stack-root .stack-work
+  script:
+    - ${STACK} test --coverage
+  after_script:
+    - mkdir -p coverage bin
+    - mv `${STACK} path --local-hpc-root`/* coverage
+    - mv `${STACK} path --local-install-root`/bin/* bin
+  cache:
+    paths:
+      - .stack-root
+      - .stack-work
+  artifacts:
+    paths:
+      - coverage
+      - bin
+
+pages:
+  stage: deploy
+  dependencies:
+    - build
+  script:
+    mv coverage/ public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 10 days
+  only:
+    - master
