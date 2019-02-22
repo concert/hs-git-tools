@@ -1,8 +1,8 @@
 name:           hs-git-tools
 version:        0.1.0.0
 description:    Tools for inspecting and altering git repositories
-homepage:       https://github.com/concert/hs-git-tools#readme
-bug-reports:    https://github.com/concert/hs-git-tools/issues
+homepage:       https://gitlab.com/concert/hs-git-tools#readme
+bug-reports:    https://gitlab.com/concert/hs-git-tools/issues
 author:         Concert Audio Technologies Limited
 maintainer:     development@concertdaw.co.uk
 copyright:      2018 Concert Audio Technologies Limited
@@ -17,7 +17,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/concert/hs-git-tools
+  location: https://gitlab.com/concert/hs-git-tools
 
 library
   hs-source-dirs:
