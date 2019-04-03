@@ -71,6 +71,7 @@ library
     , Git.Objects.Blob
     , Git.Objects.Commit
     , Git.Objects.GitObject
+    , Git.Objects.Internal
     , Git.Objects.Object
     , Git.Objects.Serialise
     , Git.Objects.Tag
