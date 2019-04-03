@@ -12,17 +12,13 @@ import qualified System.Path as Path
 
 import Git.Internal (nullTermStringP, oct, takeFor)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Sha1 (Sha1, sha1ByteStringParser)
+import Git.Objects.Internal (TreeRow(..))
+import Git.Sha1 (sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
-import Git.Types (FileMode(..), fileModeToInt, fileModeFromInt, checkPath)
+import Git.Types (fileModeToInt, fileModeFromInt, checkPath)
 
 
 newtype Tree = Tree {unTree :: Map Path.RelFileDir TreeRow} deriving (Show, Eq)
-
-data TreeRow = TreeRow
-  { treeRowMode :: FileMode
-  , treeRowSha1 :: Sha1
-  } deriving (Show, Eq)
 
 instance GitObject Tree where
   gitObjectType _ = ObjTyTree

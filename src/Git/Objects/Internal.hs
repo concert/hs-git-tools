@@ -15,9 +15,14 @@ import qualified System.Path as Path
 import Text.Printf (printf)
 
 import Git.Objects.GitObject (ObjectType(..))
-import Git.Objects.Tree (TreeRow)
 import Git.Sha1 (Sha1)
+import Git.Types (FileMode(..))
 
+
+data TreeRow = TreeRow
+  { treeRowMode :: FileMode
+  , treeRowSha1 :: Sha1
+  } deriving (Show, Eq)
 
 data NewObject (t :: ObjectType) where
   NObjBlob ::
