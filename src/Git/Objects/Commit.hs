@@ -1,3 +1,7 @@
+{-# LANGUAGE
+    DataKinds
+#-}
+
 module Git.Objects.Commit where
 
 import Data.Attoparsec.ByteString.Char8
@@ -14,10 +18,12 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import qualified Data.Text as Text
+import Data.Word
 import Text.Printf (printf)
 
 import Git.Internal (tellParsePos, takeTill', char_, toZonedTime)
 import Git.Objects.GitObject (GitObject(..), ObjectType(..))
+import Git.Objects.Internal (NewObject(..))
 import Git.Sha1 (Sha1, sha1HexParser)
 import qualified Git.Sha1 as Sha1
 
@@ -108,3 +114,73 @@ instance GitObject Commit where
         tz <- minutesToTimeZone <$> signed tzMinutes
         char_ '\n'
         return (name, email, posixTime, tz)
+
+encodeCommit :: NewObject 'ObjTyCommit -> BS.ByteString
+encodeCommit c = metadata <> "\n" <> nobjCommitMsg c
+  where
+    b = Builder.fromByteString
+    bt = b . encodeUtf8
+    metadata = Builder.toByteString $
+         sha1RowB "tree" (nobjCommitTreeHash c)
+      <> mconcat (sha1RowB "parent" <$> nobjCommitParents c)
+      <> contributorRowB "author" (nobjCommitAuthor c)
+           (nobjCommitAuthorEmail c) (nobjCommitAuthoredAt c)
+      <> contributorRowB "committer" (nobjCommitCommitter c)
+           (nobjCommitCommitterEmail c) (nobjCommitCommittedAt c)
+    sha1StringB = b . Char8.pack . Sha1.toHexString
+    sha1RowB role sha1 = b role <> b " " <> sha1StringB sha1 <> b "\n"
+    contributorRowB r n e t = b r <> b " " <> b (encodeUtf8 n) <> b " <"
+      <> b (encodeUtf8 e) <> b "> " <> tB t <> b "\n"
+    tB t =
+      let
+        tm = floor $ utcTimeToPOSIXSeconds $ zonedTimeToUTC t :: Int
+        tzm = timeZoneMinutes $ zonedTimeZone t
+        (h, m) = divMod (abs tzm) 60
+      in
+        bt (Text.pack $ printf "%d" tm)
+        <> b " "
+        <> (if tzm < 0 then b "-" else b "+")
+        <> bt (Text.pack $ printf "%02d" h)
+        <> bt (Text.pack $ printf "%02d" m)
+
+commitParser :: Word64 -> Parser (NewObject 'ObjTyCommit)
+commitParser size = do
+    startPos <- tellParsePos
+    treeSha1 <- treeRowP
+    parentSha1s <- many' parentRowP
+    (authName, authEmail, authAt, authTz) <- contributorRowP "author"
+    (commName, commEmail, commAt, commTz) <- contributorRowP "committer"
+    char_ '\n'
+    pos <- tellParsePos
+    msg <- BS.take (startPos + fromIntegral size - pos) <$> takeByteString
+    return $ NObjCommit
+      treeSha1
+      parentSha1s
+      authName authEmail (toZonedTime authAt authTz)
+      commName commEmail (toZonedTime commAt commTz)
+      msg
+  where
+    sha1RowP role = string role >> char ' ' >> sha1HexParser <* char '\n'
+    treeRowP = sha1RowP "tree"
+    parentRowP = sha1RowP "parent"
+    emailP = char '<' >> takeTill' (== '>')
+    twoDigit :: Parser Int
+    twoDigit = do
+      x <- digitToInt <$> satisfy isDigit
+      y <- digitToInt <$> satisfy isDigit
+      return $ 10 * x + y
+    tzMinutes = do
+      hrs <- twoDigit
+      mins <- twoDigit
+      return $ 60 * hrs + mins
+    contributorRowP role = do
+      _ <- string role
+      char_ ' '
+      name <- decodeUtf8 . BS.init <$> takeTill (== '<')
+      email <- decodeUtf8 <$> emailP
+      char_ ' '
+      posixTime <- fromIntegral @Int <$> decimal
+      char_ ' '
+      tz <- minutesToTimeZone <$> signed tzMinutes
+      char_ '\n'
+      return (name, email, posixTime, tz)
