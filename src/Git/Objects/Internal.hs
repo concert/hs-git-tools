@@ -27,10 +27,10 @@ data TreeRow = TreeRow
 data NewObject (t :: ObjectType) where
   NObjBlob ::
     { nobjBlobData :: BS.ByteString
-    } -> NewObject 'ObjTyBlob
+    } -> Blob
   NObjTree ::
     { nobjUnTree :: Map Path.RelFileDir TreeRow
-    } -> NewObject 'ObjTyTree
+    } -> Tree
   NObjCommit ::
     { nobjCommitTreeHash :: Sha1
     , nobjCommitParents :: [Sha1]
@@ -41,8 +41,13 @@ data NewObject (t :: ObjectType) where
     , nobjCommitCommitterEmail :: Text
     , nobjCommitCommittedAt :: ZonedTime
     , nobjCommitMsg :: BS.ByteString
-    } -> NewObject 'ObjTyCommit
-  NObjTag :: NewObject 'ObjTyTag
+    } -> Commit
+  NObjTag :: Tag
+
+type Blob = NewObject 'ObjTyBlob
+type Tree = NewObject 'ObjTyTree
+type Commit = NewObject 'ObjTyCommit
+type Tag = NewObject 'ObjTyTag
 
 instance Show (NewObject t) where
   show = \case
