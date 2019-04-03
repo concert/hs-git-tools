@@ -8,7 +8,6 @@ import Data.Attoparsec.ByteString.Char8
   ( Parser, anyChar, char, eitherP, many', many1, peekChar, satisfy, sepBy1
   , takeTill, sepBy', inClass)
 import qualified Data.ByteString.Char8 as Char8
-import Data.Monoid ((<>))
 import Data.Maybe (mapMaybe)
 import Data.Foldable ()
 import qualified System.Path as Path
@@ -20,7 +19,7 @@ import Git.Index.Glob
   ( DirectoryIgnorePattern(..), DoubleStar(..), Glob(..), GlobPart(..)
   , specialChars, matchGlobPath)
 
-newtype Ignores = Ignores [IgnorePattern] deriving Monoid
+newtype Ignores = Ignores [IgnorePattern] deriving (Semigroup, Monoid)
 
 ignoresP :: Parser Ignores
 ignoresP = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
@@ -28,7 +27,8 @@ ignoresP = Ignores <$> ipP `sepBy'` (many1 $ satisfy $ inClass "\r\n")
 data IgnoreAction
   = IaIgnore
   | IaInclude
-instance Monoid IgnoreAction where {mempty = IaInclude; mappend _ di = di}
+instance Semigroup IgnoreAction where _ <> di = di
+instance Monoid IgnoreAction where mempty = IaInclude
 
 ignoramus :: (AbsRel ar, SwitchFileDir fd) => IgnorePattern -> Path.Path ar fd -> Maybe IgnoreAction
 ignoramus igP path = case igP of
