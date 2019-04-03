@@ -10,24 +10,19 @@ import Data.Attoparsec.ByteString.Char8 (char)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Char (ord)
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Word
 import qualified System.Path as Path
 
 import Git.Internal (nullTermStringP, oct, takeFor)
-import Git.Objects.GitObject (GitObject(..))
-import Git.Objects.Internal (TreeRow(..), NewObject(..), ObjectType(..))
+import Git.Objects.Internal (TreeRow(..), Tree, Object(..))
 import Git.Sha1 (sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
 import Git.Types (fileModeToInt, fileModeFromInt, checkPath)
 
 
-newtype Tree = Tree {unTree :: Map Path.RelFileDir TreeRow} deriving (Show, Eq)
-
-instance GitObject Tree where
-  gitObjectType _ = ObjTyTree
-  encodeObject =
+encodeTree :: Tree -> BS.ByteString
+encodeTree =
       Builder.toByteString . mconcat . fmap rowB . Map.toList . unTree
     where
       b = Builder.fromByteString
@@ -37,29 +32,9 @@ instance GitObject Tree where
       rowB (name, TreeRow mode sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
-  objectParser size = Tree . Map.fromList <$> takeFor (fromIntegral size) rowP
-    where
-      rowP = do
-        fileMode <- (oct >>= fileModeFromInt) <* char ' '
-        name <- Path.rel <$> nullTermStringP
-        checkPath name
-        sha1 <- sha1ByteStringParser
-        return (name, TreeRow fileMode sha1)
 
-encodeTree :: NewObject 'ObjTyTree -> BS.ByteString
-encodeTree = undefined
-      Builder.toByteString . mconcat . fmap rowB . Map.toList . nobjUnTree
-    where
-      b = Builder.fromByteString
-      sha1ByteStringB = b . Sha1.unSha1
-      fileModeB = b . toOctBS . fileModeToInt
-      nameB = b . Char8.pack . Path.toString
-      rowB (name, TreeRow mode sha1) =
-        fileModeB mode <> b " " <> nameB name <> b "\NUL"
-        <> sha1ByteStringB sha1
-
-treeParser :: Word64 -> Parser (NewObject 'ObjTyTree)
-treeParser size = NObjTree . Map.fromList <$> takeFor (fromIntegral size) rowP
+treeParser :: Word64 -> Parser Tree
+treeParser size = Tree . Map.fromList <$> takeFor (fromIntegral size) rowP
   where
     rowP = do
       fileMode <- (oct >>= fileModeFromInt) <* char ' '

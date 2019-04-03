@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , PolyKinds
+#-}
 
 module Git.Store where
 
@@ -14,16 +17,15 @@ import System.Path ((</>))
 import System.Path.Directory (createDirectoryIfMissing)
 import System.Path.IO (openBinaryFile, IOMode(..))
 
-import Git.Internal (Wrapable(..))
 import Git.Objects
-  (GitObject(..), Object, decodeObject, encodeLooseObject, decodeLooseObject)
+  (Object, GitObject(..), decodeObject, encodeLooseObject, decodeLooseObject)
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 import Git.Pack (withPackSet, packSetGetObjectData)
 import Git.Repository (Repo, repoObjectsPath)
 
 
-storeObject :: GitObject a => Repo -> a -> IO (Tagged a Sha1)
+storeObject :: Repo -> Object t -> IO (Tagged t Sha1)
 storeObject repo obj =
   let
     (sha1, encoded) = encodeLooseObject obj
@@ -36,9 +38,9 @@ storeObject repo obj =
     return sha1
 
 retrieveObject
-  :: forall a. (Wrapable Object a, GitObject a) => Repo -> Tagged a Sha1 -> IO a
+  :: forall t. GitObject t => Repo -> Tagged t Sha1 -> IO (Object t)
 retrieveObject repo sha1 = do
-  eOrObj <- try $ readDirectly >>= unwrap
+  eOrObj <- try readDirectly
   case eOrObj of
     Right obj -> return obj
     Left e -> if isDoesNotExistError e then readFromPack else throwIO e
@@ -47,14 +49,14 @@ retrieveObject repo sha1 = do
     (sha1Head, filename) = splitSha1 sha1
     readDirectly = openBinaryFile (storePath </> sha1Head </> filename) ReadMode
         >>= LBS.hGetContents >>= decodeLooseObject . decompress
-    readFromPack :: IO a
+    readFromPack :: IO (Object t)
     readFromPack = do
       (objTy, sbs) <- withPackSet (storePath </> Path.relDir "pack") $
         packSetGetObjectData $ unTagged sha1
-      unless (objTy == gitObjectType (Proxy @a)) $ error "Bad object type"
+      unless (objTy == goTy (Proxy @t)) $ error "Bad object type"
       decodeObject sbs
 
 
-splitSha1 :: Tagged a Sha1 -> (Path.RelDir, Path.RelFile)
+splitSha1 :: Tagged (a :: k) Sha1 -> (Path.RelDir, Path.RelFile)
 splitSha1 sha1 = let (h, t) = splitAt 2 $ Sha1.toHexString $ unTagged sha1 in
   (Path.relDir h, Path.relFile t)

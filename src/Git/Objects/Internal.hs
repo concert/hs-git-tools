@@ -27,47 +27,47 @@ data TreeRow = TreeRow
   , treeRowSha1 :: Sha1
   } deriving (Show, Eq)
 
-data NewObject (t :: ObjectType) where
-  NObjBlob ::
-    { nobjBlobData :: BS.ByteString
+data Object (t :: ObjectType) where
+  Blob ::
+    { blobData :: BS.ByteString
     } -> Blob
-  NObjTree ::
-    { nobjUnTree :: Map Path.RelFileDir TreeRow
+  Tree ::
+    { unTree :: Map Path.RelFileDir TreeRow
     } -> Tree
-  NObjCommit ::
-    { nobjCommitTreeHash :: Sha1
-    , nobjCommitParents :: [Sha1]
-    , nobjCommitAuthor :: Text
-    , nobjCommitAuthorEmail :: Text
-    , nobjCommitAuthoredAt :: ZonedTime
-    , nobjCommitCommitter :: Text
-    , nobjCommitCommitterEmail :: Text
-    , nobjCommitCommittedAt :: ZonedTime
-    , nobjCommitMsg :: BS.ByteString
+  Commit ::
+    { commitTreeHash :: Sha1
+    , commitParents :: [Sha1]
+    , commitAuthor :: Text
+    , commitAuthorEmail :: Text
+    , commitAuthoredAt :: ZonedTime
+    , commitCommitter :: Text
+    , commitCommitterEmail :: Text
+    , commitCommittedAt :: ZonedTime
+    , commitMsg :: BS.ByteString
     } -> Commit
-  NObjTag :: Tag
+  Tag :: Tag
 
-type Blob = NewObject 'ObjTyBlob
-type Tree = NewObject 'ObjTyTree
-type Commit = NewObject 'ObjTyCommit
-type Tag = NewObject 'ObjTyTag
+type Blob = Object 'ObjTyBlob
+type Tree = Object 'ObjTyTree
+type Commit = Object 'ObjTyCommit
+type Tag = Object 'ObjTyTag
 
-instance Show (NewObject t) where
+instance Show (Object t) where
   show = \case
-    NObjBlob {nobjBlobData = bs} -> printf "<blob: %d>" $ BS.length bs
-    NObjTree {nobjUnTree = m} -> printf "<tree: %s>" $ show m
-    NObjCommit
-      { nobjCommitAuthor = a
-      , nobjCommitAuthorEmail = e
-      , nobjCommitAuthoredAt = t} -> printf "<commit: %s <%s> %s>" a e (show t)
-    NObjTag {} -> "<tag>"
+    Blob {blobData = bs} -> printf "<blob: %d>" $ BS.length bs
+    Tree {unTree = m} -> printf "<tree: %s>" $ show m
+    Commit
+      { commitAuthor = a
+      , commitAuthorEmail = e
+      , commitAuthoredAt = t} -> printf "<commit: %s <%s> %s>" a e (show t)
+    Tag {} -> "<tag>"
 
-data SomeNewObject where
-  SomeNewObject :: NewObject t -> SomeNewObject
+data SomeObject where
+  SomeObject :: Object t -> SomeObject
 
-nObjectType :: NewObject t -> ObjectType
+nObjectType :: Object t -> ObjectType
 nObjectType = \case
-  NObjBlob {} -> ObjTyBlob
-  NObjTree {} -> ObjTyTree
-  NObjCommit {} -> ObjTyCommit
-  NObjTag {} -> ObjTyTag
+  Blob {} -> ObjTyBlob
+  Tree {} -> ObjTyTree
+  Commit {} -> ObjTyCommit
+  Tag {} -> ObjTyTag

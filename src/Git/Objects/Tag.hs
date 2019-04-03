@@ -8,19 +8,10 @@ import Data.Attoparsec.ByteString (Parser)
 import qualified Data.ByteString as BS
 import Data.Word
 
-import Git.Objects.GitObject (GitObject(..))
-import Git.Objects.Internal (NewObject(..), ObjectType(..))
+import Git.Objects.Internal (Tag)
 
-
-data Tag = Tag
-
-instance GitObject Tag where
-  gitObjectType _ = ObjTyTag
-  encodeObject = undefined
-  objectParser = undefined
-
-encodeTag :: NewObject 'ObjTyTag -> BS.ByteString
+encodeTag :: Tag -> BS.ByteString
 encodeTag = undefined
 
-tagParser :: Word64 -> Parser (NewObject 'ObjTyTag)
+tagParser :: Word64 -> Parser Tag
 tagParser = undefined
