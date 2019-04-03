@@ -14,10 +14,13 @@ import Data.Time (ZonedTime)
 import qualified System.Path as Path
 import Text.Printf (printf)
 
-import Git.Objects.GitObject (ObjectType(..))
 import Git.Sha1 (Sha1)
 import Git.Types (FileMode(..))
 
+
+data ObjectType =
+  ObjTyBlob | ObjTyTree | ObjTyCommit | ObjTyTag
+  deriving (Show, Eq, Enum, Bounded)
 
 data TreeRow = TreeRow
   { treeRowMode :: FileMode

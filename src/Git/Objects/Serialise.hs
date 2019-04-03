@@ -34,8 +34,9 @@ import qualified Git.Sha1 as Sha1
 import Git.Objects.Blob (encodeBlob, blobParser)
 import Git.Objects.Commit (encodeCommit, commitParser)
 import Git.Objects.Object (Object(..))
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Objects.Internal (NewObject(..), SomeNewObject(..), nObjectType)
+import Git.Objects.GitObject (GitObject(..))
+import Git.Objects.Internal
+  ( NewObject(..), ObjectType(..), SomeNewObject(..), nObjectType)
 import Git.Objects.Tag (encodeTag, tagParser)
 import Git.Objects.Tree (encodeTree, treeParser)
 

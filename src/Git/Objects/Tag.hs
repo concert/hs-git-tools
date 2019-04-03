@@ -8,8 +8,8 @@ import Data.Attoparsec.ByteString (Parser)
 import qualified Data.ByteString as BS
 import Data.Word
 
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Objects.Internal (NewObject(..))
+import Git.Objects.GitObject (GitObject(..))
+import Git.Objects.Internal (NewObject(..), ObjectType(..))
 
 
 data Tag = Tag

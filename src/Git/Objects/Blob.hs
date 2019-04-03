@@ -12,8 +12,8 @@ import System.IO.MMap (mmapFileForeignPtr, Mode(..))
 import Text.Printf (printf)
 
 import Git.Internal (mmapData, MmapFrom(..), MmapTo(..))
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Objects.Internal (NewObject(..))
+import Git.Objects.GitObject (GitObject(..))
+import Git.Objects.Internal (NewObject(..), ObjectType(..))
 
 
 data Blob = Blob {blobData :: BS.ByteString}

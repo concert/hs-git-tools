@@ -16,8 +16,8 @@ import Data.Word
 import qualified System.Path as Path
 
 import Git.Internal (nullTermStringP, oct, takeFor)
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Objects.Internal (TreeRow(..), NewObject(..))
+import Git.Objects.GitObject (GitObject(..))
+import Git.Objects.Internal (TreeRow(..), NewObject(..), ObjectType(..))
 import Git.Sha1 (sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
 import Git.Types (fileModeToInt, fileModeFromInt, checkPath)

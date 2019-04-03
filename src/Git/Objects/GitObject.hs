@@ -4,10 +4,8 @@ import Data.Attoparsec.ByteString (Parser)
 import qualified Data.ByteString as BS
 import Data.Word
 
+import Git.Objects.Internal (ObjectType)
 
-data ObjectType =
-  ObjTyBlob | ObjTyTree | ObjTyCommit | ObjTyTag
-  deriving (Show, Eq, Enum, Bounded)
 
 class GitObject a where
   gitObjectType :: proxy a -> ObjectType

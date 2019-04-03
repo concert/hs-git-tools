@@ -22,8 +22,8 @@ import Data.Word
 import Text.Printf (printf)
 
 import Git.Internal (tellParsePos, takeTill', char_, toZonedTime)
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Objects.Internal (NewObject(..))
+import Git.Objects.GitObject (GitObject(..))
+import Git.Objects.Internal (NewObject(..), ObjectType(..))
 import Git.Sha1 (Sha1, sha1HexParser)
 import qualified Git.Sha1 as Sha1
 

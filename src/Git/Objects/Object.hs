@@ -7,7 +7,7 @@ module Git.Objects.Object where
 import Git.Internal (Wrapable(..))
 import Git.Objects.Blob (Blob)
 import Git.Objects.Commit (Commit)
-import Git.Objects.GitObject (ObjectType(..))
+import Git.Objects.Internal (ObjectType(..))
 import Git.Objects.Tag (Tag)
 import Git.Objects.Tree (Tree)
 
