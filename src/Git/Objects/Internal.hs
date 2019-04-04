@@ -65,8 +65,8 @@ instance Show (Object t) where
 data SomeObject where
   SomeObject :: Object t -> SomeObject
 
-nObjectType :: Object t -> ObjectType
-nObjectType = \case
+objectType :: Object t -> ObjectType
+objectType = \case
   Blob {} -> ObjTyBlob
   Tree {} -> ObjTyTree
   Commit {} -> ObjTyCommit

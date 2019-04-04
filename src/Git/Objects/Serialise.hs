@@ -36,7 +36,7 @@ import qualified Git.Sha1 as Sha1
 import Git.Objects.Blob (encodeBlob, blobParser)
 import Git.Objects.Commit (encodeCommit, commitParser)
 import Git.Objects.Internal
-  ( Object(..), ObjectType(..), SomeObject(..), nObjectType)
+  ( Object(..), ObjectType(..), SomeObject(..), objectType)
 import Git.Objects.Tag (encodeTag, tagParser)
 import Git.Objects.Tree (encodeTree, treeParser)
 
@@ -59,7 +59,7 @@ encodeLooseObject o =
   let
     body = encodeObject o
     encodedWithHeader =
-        encodeObjectType (nObjectType o) <> " "
+        encodeObjectType (objectType o) <> " "
         <> (Char8.pack $ printf "%d" $ BS.length body)
         <> "\NUL" <> body
     -- FIXME: are we concerned about encoding large files using too much memory?
