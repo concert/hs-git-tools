@@ -14,7 +14,6 @@ import qualified Data.ByteString.Char8 as Char8
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes)
-import Data.Monoid
 import qualified System.Path as Path
 import Text.Printf (printf)
 

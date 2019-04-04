@@ -1,32 +1,28 @@
+{-# LANGUAGE
+    DataKinds
+#-}
+
 module Git.Objects.Tree where
 
 import qualified Blaze.ByteString.Builder as Builder
+import Data.Attoparsec.ByteString (Parser)
 import Data.Attoparsec.ByteString.Char8 (char)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Char (ord)
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Monoid ((<>))
+import Data.Word
 import qualified System.Path as Path
 
 import Git.Internal (nullTermStringP, oct, takeFor)
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
-import Git.Sha1 (Sha1, sha1ByteStringParser)
+import Git.Objects.Internal (TreeRow(..), Tree, Object(..))
+import Git.Sha1 (sha1ByteStringParser)
 import qualified Git.Sha1 as Sha1
-import Git.Types (FileMode(..), fileModeToInt, fileModeFromInt, checkPath)
+import Git.Types (fileModeToInt, fileModeFromInt, checkPath)
 
 
-newtype Tree = Tree {unTree :: Map Path.RelFileDir TreeRow} deriving (Show, Eq)
-
-data TreeRow = TreeRow
-  { treeRowMode :: FileMode
-  , treeRowSha1 :: Sha1
-  } deriving (Show, Eq)
-
-instance GitObject Tree where
-  gitObjectType _ = ObjTyTree
-  encodeObject =
+encodeTree :: Tree -> BS.ByteString
+encodeTree =
       Builder.toByteString . mconcat . fmap rowB . Map.toList . unTree
     where
       b = Builder.fromByteString
@@ -36,14 +32,16 @@ instance GitObject Tree where
       rowB (name, TreeRow mode sha1) =
         fileModeB mode <> b " " <> nameB name <> b "\NUL"
         <> sha1ByteStringB sha1
-  objectParser size = Tree . Map.fromList <$> takeFor (fromIntegral size) rowP
-    where
-      rowP = do
-        fileMode <- (oct >>= fileModeFromInt) <* char ' '
-        name <- Path.rel <$> nullTermStringP
-        checkPath name
-        sha1 <- sha1ByteStringParser
-        return (name, TreeRow fileMode sha1)
+
+treeParser :: Word64 -> Parser Tree
+treeParser size = Tree . Map.fromList <$> takeFor (fromIntegral size) rowP
+  where
+    rowP = do
+      fileMode <- (oct >>= fileModeFromInt) <* char ' '
+      name <- Path.rel <$> nullTermStringP
+      checkPath name
+      sha1 <- sha1ByteStringParser
+      return (name, TreeRow fileMode sha1)
 
 toOctBS :: Integral a => a -> BS.ByteString
 toOctBS = BS.pack . fmap (fromIntegral . wordToDigit) . toWords

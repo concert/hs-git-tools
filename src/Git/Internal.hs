@@ -101,10 +101,6 @@ mmapSha1 :: MmapHandle -> MmapFrom -> Sha1
 mmapSha1 h from = either error id $ Sha1.fromByteString $
   mmapData h from (Length 20)
 
-class Wrapable w a where
-  wrap :: a -> w
-  unwrap :: MonadFail m => w -> m a
-
 lazyParseOnly :: MonadFail m => Parser a -> LBS.ByteString -> m a
 lazyParseOnly p bs = case parse p bs of
     Fail _ [] err -> fail err

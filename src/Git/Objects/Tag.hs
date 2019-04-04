@@ -1,11 +1,17 @@
+{-# LANGUAGE
+    DataKinds
+#-}
+
 module Git.Objects.Tag where
 
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
+import Data.Attoparsec.ByteString (Parser)
+import qualified Data.ByteString as BS
+import Data.Word
 
+import Git.Objects.Internal (Tag)
 
-data Tag = Tag
+encodeTag :: Tag -> BS.ByteString
+encodeTag = undefined
 
-instance GitObject Tag where
-  gitObjectType _ = ObjTyTag
-  encodeObject = undefined
-  objectParser = undefined
+tagParser :: Word64 -> Parser Tag
+tagParser = undefined

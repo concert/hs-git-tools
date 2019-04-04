@@ -1,24 +1,24 @@
+{-# LANGUAGE
+    DataKinds
+#-}
+
 module Git.Objects.Blob where
 
-import Data.Attoparsec.ByteString (takeByteString)
+import Data.Attoparsec.ByteString (Parser, takeByteString)
 import qualified Data.ByteString as BS
+import Data.Word
 import qualified System.Path as Path
 import System.IO.MMap (mmapFileForeignPtr, Mode(..))
-import Text.Printf (printf)
 
 import Git.Internal (mmapData, MmapFrom(..), MmapTo(..))
-import Git.Objects.GitObject (GitObject(..), ObjectType(..))
+import Git.Objects.Internal (Blob, Object(..))
 
 
-data Blob = Blob {blobData :: BS.ByteString}
+encodeBlob :: Blob -> BS.ByteString
+encodeBlob = blobData
 
-instance Show Blob where
-  show = printf "<blob: %d>" . BS.length . blobData
-
-instance GitObject Blob where
-  gitObjectType _ = ObjTyBlob
-  encodeObject = blobData
-  objectParser size = Blob . BS.take (fromIntegral size) <$> takeByteString
+blobParser :: Word64 -> Parser Blob
+blobParser size = Blob . BS.take (fromIntegral size) <$> takeByteString
 
 -- FIXME: this doesn't report trying to open the wrong type of file very well...
 fromFile :: Path.AbsFile -> IO Blob

@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE
-    FlexibleContexts
+    DataKinds
+  , FlexibleContexts
+  , FlexibleInstances
+  , GADTs
   , StandaloneDeriving
 #-}
 
@@ -26,23 +29,21 @@ import Data.Time
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import qualified System.Path as Path
 
-import Git.Internal (Wrapable(..), tellParsePos)
+import Git.Internal (tellParsePos)
 import Git.Types (FileMode(..))
 import Git.Objects
-  (GitObject(gitObjectType), Object
-  , Commit(..), Blob(..), Tree(..), TreeRow(..))
+  ( Object(..), ObjectType(..), Commit, Blob, Tree, TreeRow(..))
 import Git.Objects.Serialise
   ( decodeObject, encodeObject
   , decodeLooseObject, encodeLooseObject
-  , encodeObjectType)
+  , encodeObjectType, GitObject(..))
 import Git.Sha1 (Sha1)
 import qualified Git.Sha1 as Sha1
 
 import Git.Sha1Spec ()
 
 deriving instance Eq ZonedTime
-deriving instance Eq Commit
-deriving instance Eq Blob
+deriving instance Eq (Object t)
 
 spec :: Spec
 spec = describe "Serialise" $ do
@@ -59,21 +60,22 @@ spec = describe "Serialise" $ do
     checkEncoding blob_527d8d43
   where
     checkEncoding
-      :: forall a. (Wrapable Object a, GitObject a, Show a, Eq a, Arbitrary a)
+      :: forall a.
+      (GitObject a, Show (Object a), Eq (Object a), Arbitrary (Object a))
       => TestObject a -> Spec
     checkEncoding (TestObject objSha1 looseHeader bytes obj) =
-      let tyName = encodeObjectType $ gitObjectType $ Proxy @a in
+      let tyName = encodeObjectType $ goTy $ Proxy @a in
       describe (tyName ++ " encoding") $ do
         it ("should decode a real " ++ tyName) $
-          (decodeObject bytes :: Either String a) `shouldBe` Right obj
+          (decodeObject bytes :: Either String (Object a)) `shouldBe` Right obj
 
         it ("should encode a real " ++ tyName) $
           encodeObject obj `shouldBe` bytes
 
         it ("should decode a real loose " ++ tyName) $
           let
+            decoded :: Either String (Object a)
             decoded = decodeLooseObject (LBS.fromStrict $ looseHeader <> bytes)
-              >>= unwrap :: Either String a
           in
             decoded `shouldBe` Right obj
 
@@ -85,7 +87,7 @@ spec = describe "Serialise" $ do
         it ("arbitrary " ++ tyName ++ "s should roundtrip") $ property $ \o ->
           let
             encoded = encodeObject @a o
-            roundtripped = decodeObject encoded :: Either String a
+            roundtripped = decodeObject encoded :: Either String (Object a)
           in
             counterexample (show encoded) $
             counterexample (show roundtripped) $
@@ -98,11 +100,11 @@ sha1 = either error id . Sha1.fromHexString
 data TestObject objTy
   = TestObject
   { toSha1 :: Sha1, toLooseHeader :: BS.ByteString, toBody :: BS.ByteString
-  , toObject :: objTy}
+  , toObject :: Object objTy}
 
 -- | This is raw decompressed commit data from this very git repo (trying to
 --   organise it as a data file for the test via cabal was hard).
-commit_fa7a2abb :: TestObject Commit
+commit_fa7a2abb :: TestObject 'ObjTyCommit
 commit_fa7a2abb = TestObject
     (sha1 "fa7a2abbf5e2457197ba973140fdbba3ad7b47ca")
     "commit 242\NUL"
@@ -141,7 +143,7 @@ instance Arbitrary Commit where
         utcToZonedTime tz . posixSecondsToUTCTime . fromRational . toRational
           <$> choose (0, 10000000 :: Int)
 
-tree_56558e32 :: TestObject Tree
+tree_56558e32 :: TestObject 'ObjTyTree
 tree_56558e32 = TestObject
     (sha1 "56558e3275b57381cd04d6cb604dde2f7e773166")
     "tree 400\NUL"
@@ -210,7 +212,7 @@ arbitraryGitPath = Path.rel . intercalate "/" <$> comps
 instance Arbitrary TreeRow where
   arbitrary = TreeRow <$> arbitraryBoundedEnum <*> arbitrary
 
-blob_527d8d43 :: TestObject Blob
+blob_527d8d43 :: TestObject 'ObjTyBlob
 blob_527d8d43 = TestObject
     (sha1 "527d8d439785ea9d0dd563acc0cdb650d0a8566e")
     "blob 46\NUL"
