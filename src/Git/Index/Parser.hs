@@ -7,8 +7,6 @@ module Git.Index.Parser where
 
 import Control.Applicative ((<|>))
 import Control.Monad (unless, when, replicateM_)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.IO.Class (MonadIO(..))
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
   (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
@@ -27,13 +25,12 @@ import Data.Time.Clock.POSIX (POSIXTime, systemToPOSIXTime)
 import Data.Time.Clock.System (SystemTime(..))
 import Data.Word
 import qualified System.Path as Path
-import System.Path.IO (openBinaryFile, IOMode(..))
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Internal
   (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
 import Git.Sha1 (sha1ByteStringParser, sha1Size)
-import Git.Types (FileMode, fileModeFromInt, GitError(..), checkPath)
+import Git.Types (FileMode, fileModeFromInt, checkPath)
 import Git.Index.Extensions
   (IndexExtension(..), extensionP, CachedTree(..), ResolveUndo(..))
 import Git.Index.Index (Index(..))
@@ -43,17 +40,6 @@ import Git.Index.Types
   , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage, intToStage, mapToStages)
 
-
-openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
-openIndex' path = p path >>= openIndex
-  where
-    p = either (throwError . ParseError) return . Path.parse
-
-openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
-openIndex path = do
-  content <- liftIO $ openBinaryFile path ReadMode >>=
-    LBS.hGetContents
-  either (throwError . ParseError) return $ parseIndex content
 
 parseIndex :: LBS.ByteString -> Either String Index
 parseIndex lbs = lazyParseOnly (indexP <* endOfInput) $
