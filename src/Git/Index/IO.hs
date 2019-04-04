@@ -4,7 +4,7 @@
 #-}
 module Git.Index.IO where
 
-import Control.Exception (handleJust, try)
+import Control.Exception (try)
 import Control.Monad.Except (MonadError(..), runExceptT, ExceptT)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (runReaderT)
