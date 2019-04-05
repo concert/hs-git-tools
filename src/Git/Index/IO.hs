@@ -9,6 +9,7 @@ import Control.Monad.Except (MonadError(..), runExceptT, ExceptT)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.State (runStateT)
+import Data.Attoparsec.ByteString (Parser, endOfInput)
 import qualified Data.ByteString.Lazy as LBS
 import qualified System.Path as Path
 import System.Path.IO (openBinaryFile, withBinaryFile, IOMode(..))
@@ -18,23 +19,32 @@ import GHC.IO.Exception (IOException(..), IOErrorType(..))
 import Git.Index.Builder (indexLbs)
 import Git.Index.Index (Index, index)
 import Git.Index.Update (IndexM)
-import Git.Index.Parser (parseIndex)
+import Git.Index.Parser (indexP)
+import Git.Internal (lazyParseOnly)
 import Git.Repository (Repo, repoIndexPath)
 import Git.Types.Error (GitError(..))
 
 
-openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
-openIndex' path = p path >>= openIndex
+openParsable'
+  :: (MonadIO m, MonadError GitError m) => Parser a -> FilePath -> m a
+openParsable' parser path = p path >>= openParsable parser
   where
     p = either (throwError . ParseError) return . Path.parse
 
-openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
-openIndex path = do
+openParsable
+  :: (MonadIO m, MonadError GitError m) => Parser a -> Path.AbsFile -> m a
+openParsable parser path = do
   result <- liftIO $ try $ openBinaryFile path ReadMode >>= LBS.hGetContents
   case result of
     Left ioErr -> throwError $ ErrorWithIO ioErr
     Right content -> either (throwError . ParseError) return $
-        parseIndex content
+        lazyParseOnly (parser <* endOfInput) content
+
+openIndex' :: (MonadIO m, MonadError GitError m) => FilePath -> m Index
+openIndex' = openParsable' indexP
+
+openIndex :: (MonadIO m, MonadError GitError m) => Path.AbsFile -> m Index
+openIndex = openParsable indexP
 
 
 writeIndex :: Path.AbsFile -> Index -> IO ()

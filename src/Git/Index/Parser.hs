@@ -9,11 +9,10 @@ import Control.Applicative ((<|>))
 import Control.Monad (unless, when, replicateM_)
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 import Data.Attoparsec.ByteString
-  (Parser, (<?>), string, satisfy, takeTill, many', endOfInput)
+  (Parser, (<?>), string, satisfy, takeTill, many')
 import Data.Attoparsec.VarWord (denseVarWordBe)
 import Data.Bits ((.&.), shiftR, testBit)
 import qualified Data.ByteString.Char8 as Char8
-import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (foldl')
 import Data.Monoid ((<>))
 import Data.Map (Map)
@@ -28,8 +27,8 @@ import qualified System.Path as Path
 import System.Posix.Types (CDev(..), CIno(..), CUid(..), CGid(..))
 
 import Git.Internal
-  (lazyParseOnly, nullTermStringP, tellParsePos, lowMask)
-import Git.Sha1 (sha1ByteStringParser, sha1Size)
+  (nullTermStringP, tellParsePos, lowMask)
+import Git.Sha1 (sha1ByteStringParser)
 import Git.Types (FileMode, fileModeFromInt, checkPath)
 import Git.Index.Extensions
   (IndexExtension(..), extensionP, CachedTree(..), ResolveUndo(..))
@@ -40,17 +39,19 @@ import Git.Index.Types
   , GitFileStat(..), IndexEntry(..), IndexEntries
   , Flag(..), Stage, intToStage, mapToStages)
 
-
-parseIndex :: LBS.ByteString -> Either String Index
-parseIndex lbs = lazyParseOnly (indexP <* endOfInput) $
-  LBS.take (LBS.length lbs - fromIntegral sha1Size) lbs
-
+-- | Like `indexContentP` but includes the trailing SHA1 of the content that is
+--   included in the on-disk file
 indexP :: Parser Index
-indexP = do
+indexP = indexContentP <* sha1ByteStringParser
+
+-- | Parser for the content of an index file, excluding the trailing SHA1 of the
+--   preceding content. This maintains symmetry with the Builder, which can't
+--   include its own hash.
+indexContentP :: Parser Index
+indexContentP = do
   (version, numEntries) <- headerP
   entries <- indexEntriesP version numEntries
   (ct, ru) <- extensionsP
-  -- _ <- sha1ByteStringParser
   return $ Index version entries ct ru
 
 headerP :: Parser (IndexVersion, Word32)
