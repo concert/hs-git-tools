@@ -7,7 +7,7 @@ module Git.Index.Update where
 
 import Control.Exception (try, IOException)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), ExceptT(..), runExceptT)
+import Control.Monad.Except (MonadError(..), ExceptT(..))
 import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
@@ -26,29 +26,16 @@ import Data.Attoparsec.ByteString (Parser, endOfInput)
 import Git.Internal (lazyParseOnly)
 import Git.Types (GitError(..))
 import qualified Git.Objects.Blob as Blob
-import Git.Repository (Repo(..), repoIndexPath)
+import Git.Repository (Repo(..))
 import Git.Store (storeObject)
 
-import Git.Index.Builder (writeIndex)
 import Git.Index.Index (Index(..), gfsFromIndex)
-import Git.Index.Parser (openIndex)
 import Git.Index.Types
   (Stages(..), IndexEntry(..), IndexEntries, GitFileStat(..), gfsFromStat)
 import Git.Index.Ignore (ignore, Ignores, ignoresP, IgnoreAction(..))
 
 
 type IndexM m r = ExceptT GitError (ReaderT Repo (StateT Index m)) r
-
-withIndex :: (MonadIO m) => Repo -> IndexM m r -> m r
-withIndex repo im = let path = repoIndexPath repo in do
-    idx <- (runExceptT $ openIndex path) >>= dieOnErr
-    (res, idx') <- runStateT (runReaderT (runExceptT im) repo) idx
-    -- Whether we died or not, we have to write the updated index because we may
-    -- have made corresponding state changes to the repository:
-    liftIO $ writeIndex path idx'
-    dieOnErr res
-  where
-    dieOnErr = either (liftIO . error . show) return
 
 
 updateIndex

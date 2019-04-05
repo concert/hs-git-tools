@@ -5,7 +5,8 @@ module Git.Index.ParserSpec where
 
 import Test.Hspec
 
-import qualified Data.ByteString.Lazy as BS
+import Data.Attoparsec.ByteString (endOfInput)
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified System.Path as Path
@@ -33,7 +34,7 @@ deriving instance Eq Index
 spec :: Spec
 spec = describe "Parser" $ do
   it "should decode a real normal v2 tree" $
-     (lazyParseOnly indexP v2NormalIndex :: Either String Index)
+     parseIndex v2NormalIndex
      `shouldBe`
      Right (index Version2)
        { indexEntries = Map.singleton (Path.rel "bar.txt") $
@@ -46,7 +47,7 @@ spec = describe "Parser" $ do
              ) shaNor mempty
        }
   it "should decode a real normal v3 tree" $
-     (lazyParseOnly indexP v3NormalIndex :: Either String Index)
+     parseIndex v3NormalIndex
      `shouldBe`
      Right (index Version3)
        { indexEntries = Map.fromList [
@@ -68,7 +69,7 @@ spec = describe "Parser" $ do
         ]
        }
   it "should decode a real normal v4 tree" $
-     (lazyParseOnly indexP v4NormalIndex :: Either String Index)
+     parseIndex v4NormalIndex
      `shouldBe`
      Right (index Version4)
        { indexEntries = Map.singleton (Path.rel "bar.txt") $
@@ -81,7 +82,7 @@ spec = describe "Parser" $ do
              ) shaNor mempty
        }
   it "should decode a real conflicting v2 tree" $
-     (lazyParseOnly indexP v2ConflictIndex :: Either String Index)
+     parseIndex v2ConflictIndex
      `shouldBe`
      Right (index Version2)
        { indexEntries = Map.singleton (Path.rel "f.txt") $
@@ -90,10 +91,13 @@ spec = describe "Parser" $ do
              (IndexEntry gitFileStat sha1V2Conb mempty)
        }
 
+parseIndex :: LBS.ByteString -> Either String Index
+parseIndex = lazyParseOnly $ indexP <* endOfInput
+
 -- NB: the \NUL padding on the end of the first file name is hard to distinguish
 -- from the \NULs that git fills in for the stat information on conflicting
 -- files:
-v2ConflictIndex :: BS.ByteString
+v2ConflictIndex :: LBS.ByteString
 v2ConflictIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\STX\
     \\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\
     \\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\NUL\129\164\NUL\NUL\NUL\NUL\
@@ -113,7 +117,7 @@ sha1V2Cona, sha1V2Conb :: Sha1
 sha1V2Cona = Sha1.unsafeSha1 ";\CAN\229\DC2\219\167\158L\131\NUL\221\b\174\179\DEL\142r\139\141\173"
 sha1V2Conb = Sha1.unsafeSha1 "oLp\209\203\ENQ\154\247\ETX\162\206\&6\ENQ\209d\b\232\207\SYN\207"
 
-v2NormalIndex :: BS.ByteString
+v2NormalIndex :: LBS.ByteString
 v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOH\
     \Z\212\163\235\NUL\174r\148Z\212\163\235\
     \\NUL\174r\148\NUL\NUL\b\EOT\NULT\SIB\
@@ -124,7 +128,7 @@ v2NormalIndex = "DIRC\NUL\NUL\NUL\STX\NUL\NUL\NUL\SOH\
     \bar.txt\NUL\NUL\NUL\
     \\135\173\157o\178S\v\vf\140\130N\236&\130\128ys\240I"
 
-v3NormalIndex :: BS.ByteString
+v3NormalIndex :: LBS.ByteString
 v3NormalIndex = "DIRC\NUL\NUL\NUL\ETX\NUL\NUL\NUL\STX\
     \Z\216\183k\DC4\239\&3[Z\216\183k\
     \\DC4\239\&3[\NUL\NUL\b\EOT\NULT\15B\
@@ -142,7 +146,7 @@ v3NormalIndex = "DIRC\NUL\NUL\NUL\ETX\NUL\NUL\NUL\STX\
     \foo.a\NUL\NUL\NUL\
     \\194\192 1\187\232\f\171\146\228#\182\203=\170\v\227\USB!"
 
-v4NormalIndex :: BS.ByteString
+v4NormalIndex :: LBS.ByteString
 v4NormalIndex = "DIRC\NUL\NUL\NUL\EOT\NUL\NUL\NUL\SOH\
     \Z\216\183k\DC4\239\&3[Z\216\183k\
     \\DC4\239\&3[\NUL\NUL\b\EOT\NULT\15B\

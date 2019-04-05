@@ -6,6 +6,7 @@ import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Gen (chooseAny)
 
+import Data.Attoparsec.ByteString (endOfInput)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified System.Path as Path
@@ -17,7 +18,7 @@ import Git.Index.Builder (indexLbs)
 import Git.Index.Extensions
   (CachedTree(..), CachedTreeRow(..), ResolveUndo(..), ResolveUndoStages(..))
 import Git.Index.Index (Index(..))
-import Git.Index.Parser (parseIndex, mkPosixTime)
+import Git.Index.Parser (indexP, mkPosixTime)
 import Git.Index.Types
   (IndexEntry(..), iesMinVersion, Stages(..), Flag(..)
   , GitFileStat(..), gitFileStat)
@@ -25,6 +26,7 @@ import Git.Types (FileMode(..))
 
 import Git.Sha1Spec ()
 import Git.Index.ParserSpec ()
+import Git.Internal (lazyParseOnly)
 import Git.Objects.SerialiseSpec (arbitraryGitPath)
 
 
@@ -117,7 +119,8 @@ spec = do
   it "should consistently serialise and deserialise" $ property $ \idx ->
     let
       encoded = indexLbs idx
-      roundtripped = parseIndex encoded :: Either String Index
+      roundtripped :: Either String Index
+      roundtripped = lazyParseOnly (indexP <* endOfInput) encoded
     in
       counterexample (show encoded) $
       counterexample (show roundtripped) $
